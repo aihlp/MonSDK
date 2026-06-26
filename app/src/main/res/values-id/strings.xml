@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tekanan darah</string>
+    <string name="settings">Pengaturan</string>
+    <string name="tab_record">CATAT</string>
+    <string name="tab_statistics">STATISTIK</string>
+    <string name="record_saved">Catatan disimpan</string>
+    <string name="edit_date_time">Edit tanggal dan waktu</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Batal</string>
+    <string name="medication">Obat</string>
+    <string name="edit_medication">Edit obat</string>
+    <string name="taken_upper">DIMINUM</string>
+    <string name="missed_upper">TERLEWAT</string>
+    <string name="dose">Dosis</string>
+    <string name="blood_pressure">Tekanan darah</string>
+    <string name="pulse">Nadi</string>
+    <string name="other">Lainnya</string>
+    <string name="custom_tag">Tag %1$s kustom</string>
+    <string name="add">Tambah</string>
+    <string name="note">Catatan</string>
+    <string name="add_note">Tambah catatan</string>
+    <string name="statistics">Statistik</string>
+    <string name="key_metrics">Metrik utama</string>
+    <string name="findings">Temuan</string>
+    <string name="good">Baik</string>
+    <string name="risk">Risiko</string>
+    <string name="info">Info</string>
+    <string name="history">Riwayat</string>
+    <string name="actions">Tindakan</string>
+    <string name="delete">Hapus</string>
+    <string name="taken">Diminum</string>
+    <string name="missed">Terlewat</string>
+    <string name="devices">Perangkat</string>
+    <string name="device_integrations_disabled">Integrasi perangkat tidak diaktifkan pada rilis ini.</string>
+    <string name="health_connect_disabled">Sinkronisasi Health Connect tidak diaktifkan pada rilis ini.</string>
+    <string name="units">Satuan</string>
+    <string name="units_summary">Tekanan darah: mmHg - Nadi: bpm - Dosis: mg</string>
+    <string name="about">Tentang</string>
+    <string name="data_export_import">Ekspor dan impor data</string>
+    <string name="export_csv">Ekspor CSV</string>
+    <string name="import_csv">Impor CSV</string>
+    <string name="reminders">Pengingat</string>
+    <string name="create_reminder">Buat pengingat</string>
+    <string name="reminder">Pengingat</string>
+    <string name="save">Simpan</string>
+    <string name="measurement">Pengukuran</string>
+    <string name="diary">Buku harian</string>
+    <string name="label">Label</string>
+    <string name="once">Sekali</string>
+    <string name="daily">Harian</string>
+    <string name="weekdays">Hari kerja</string>
+    <string name="custom_days">Hari khusus</string>
+    <string name="record_at">Catatan %1$s</string>
+</resources>
+

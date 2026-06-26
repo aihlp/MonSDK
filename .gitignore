@@ -1,0 +1,22 @@
+# Gradle / Android build output
+.gradle/
+.kotlin/
+build/
+**/build/
+**/.cxx/
+**/release/
+
+# Local IDE and machine state
+.idea/
+local.properties
+
+# Temporary recovery and diagnostic artifacts
+.artifacts/
+.recovery/
+.tmpvico/
+*.sqlite
+*.db
+*.zip
+/window.xml
+/*.png
+/*.xml

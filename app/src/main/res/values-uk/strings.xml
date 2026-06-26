@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Артеріальний тиск</string>
+    <string name="settings">Налаштування</string>
+    <string name="tab_record">ЗАПИС</string>
+    <string name="tab_statistics">СТАТИСТИКА</string>
+    <string name="record_saved">Запис збережено</string>
+    <string name="edit_date_time">Змінити дату й час</string>
+    <string name="ok">ОК</string>
+    <string name="cancel">Скасувати</string>
+    <string name="medication">Препарат</string>
+    <string name="edit_medication">Змінити препарат</string>
+    <string name="taken_upper">ПРИЙНЯТО</string>
+    <string name="missed_upper">ПРОПУЩЕНО</string>
+    <string name="dose">Доза</string>
+    <string name="blood_pressure">Артеріальний тиск</string>
+    <string name="pulse">Пульс</string>
+    <string name="other">Інше</string>
+    <string name="custom_tag">Власний тег: %1$s</string>
+    <string name="add">Додати</string>
+    <string name="note">Нотатка</string>
+    <string name="add_note">Додати нотатку</string>
+    <string name="statistics">Статистика</string>
+    <string name="key_metrics">Ключові показники</string>
+    <string name="findings">Висновки</string>
+    <string name="good">Добре</string>
+    <string name="risk">Ризик</string>
+    <string name="info">Інфо</string>
+    <string name="history">Історія</string>
+    <string name="actions">Дії</string>
+    <string name="delete">Видалити</string>
+    <string name="taken">Прийнято</string>
+    <string name="missed">Пропущено</string>
+    <string name="devices">Пристрої</string>
+    <string name="device_integrations_disabled">Інтеграції з пристроями не ввімкнено в цьому релізі.</string>
+    <string name="health_connect_disabled">Синхронізацію Health Connect не ввімкнено в цьому релізі.</string>
+    <string name="units">Одиниці</string>
+    <string name="units_summary">Тиск: мм рт. ст. - Пульс: уд/хв - Доза: мг</string>
+    <string name="about">Про застосунок</string>
+    <string name="data_export_import">Експорт та імпорт даних</string>
+    <string name="export_csv">Експорт CSV</string>
+    <string name="import_csv">Імпорт CSV</string>
+    <string name="reminders">Нагадування</string>
+    <string name="create_reminder">Створити нагадування</string>
+    <string name="reminder">Нагадування</string>
+    <string name="save">Зберегти</string>
+    <string name="measurement">Вимірювання</string>
+    <string name="diary">Щоденник</string>
+    <string name="label">Назва</string>
+    <string name="once">Один раз</string>
+    <string name="daily">Щодня</string>
+    <string name="weekdays">Будні</string>
+    <string name="custom_days">Вибрані дні</string>
+    <string name="record_at">Запис %1$s</string>
+</resources>
+

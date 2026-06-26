@@ -1,0 +1,24 @@
+# New App Checklist
+
+- [ ] Project name changed.
+- [ ] `applicationId` changed.
+- [ ] App label changed.
+- [ ] Launcher icon and foreground mark changed.
+- [ ] Deep-link scheme and `FileProvider` authority changed.
+- [ ] Program package created or replaced.
+- [ ] `ProgramModule` points at the new program definition, UI definition, analytics schema, and mapper.
+- [ ] Metrics and input blocks reviewed.
+- [ ] Analytics rules reviewed.
+- [ ] Graph config references valid metrics.
+- [ ] Health Connect mappings are scoped to the vertical.
+- [ ] Android permissions reviewed and unnecessary permissions removed.
+- [ ] AI prompt wording reviewed.
+- [ ] Premium product IDs and policy reviewed.
+- [ ] Base strings updated.
+- [ ] Supported locales reviewed.
+- [ ] No unintended blood-pressure labels remain.
+- [ ] Config audit tests pass.
+- [ ] Unit tests pass.
+- [ ] Debug build assembles.
+- [ ] App installs on Pixel 8 or target device.
+- [ ] Privacy text and store metadata match the vertical.

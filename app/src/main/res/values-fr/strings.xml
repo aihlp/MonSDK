@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tension arterielle</string>
+    <string name="settings">Parametres</string>
+    <string name="tab_record">SAISIE</string>
+    <string name="tab_statistics">STATISTIQUES</string>
+    <string name="record_saved">Enregistrement sauvegarde</string>
+    <string name="edit_date_time">Modifier la date et heure</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Annuler</string>
+    <string name="medication">Medicament</string>
+    <string name="edit_medication">Modifier le medicament</string>
+    <string name="taken_upper">PRIS</string>
+    <string name="missed_upper">OUBLIE</string>
+    <string name="dose">Dose</string>
+    <string name="blood_pressure">Tension arterielle</string>
+    <string name="pulse">Pouls</string>
+    <string name="other">Autre</string>
+    <string name="custom_tag">Etiquette %1$s personnalisee</string>
+    <string name="add">Ajouter</string>
+    <string name="note">Note</string>
+    <string name="add_note">Ajouter une note</string>
+    <string name="statistics">Statistiques</string>
+    <string name="key_metrics">Indicateurs cles</string>
+    <string name="findings">Constats</string>
+    <string name="good">Bon</string>
+    <string name="risk">Risque</string>
+    <string name="info">Info</string>
+    <string name="history">Historique</string>
+    <string name="actions">Actions</string>
+    <string name="delete">Supprimer</string>
+    <string name="taken">Pris</string>
+    <string name="missed">Oublie</string>
+    <string name="devices">Appareils</string>
+    <string name="device_integrations_disabled">Les integrations d appareils ne sont pas activees dans cette version.</string>
+    <string name="health_connect_disabled">La synchronisation Health Connect n est pas activee dans cette version.</string>
+    <string name="units">Unites</string>
+    <string name="units_summary">Tension: mmHg - Pouls: bpm - Dose: mg</string>
+    <string name="about">A propos</string>
+    <string name="data_export_import">Exportation et importation des donnees</string>
+    <string name="export_csv">Exporter CSV</string>
+    <string name="import_csv">Importer CSV</string>
+    <string name="reminders">Rappels</string>
+    <string name="create_reminder">Creer un rappel</string>
+    <string name="reminder">Rappel</string>
+    <string name="save">Enregistrer</string>
+    <string name="measurement">Mesure</string>
+    <string name="diary">Journal</string>
+    <string name="label">Libelle</string>
+    <string name="once">Une fois</string>
+    <string name="daily">Chaque jour</string>
+    <string name="weekdays">Jours ouvrables</string>
+    <string name="custom_days">Jours personnalises</string>
+    <string name="record_at">Saisie %1$s</string>
+    <string name="ai_analysis_not_configured">L\'analyse IA n\'est pas configurée. Activez d\'abord l\'assistant IA et choisissez un mode.</string>
+    <string name="ai_assistant_off">L\'assistant IA est désactivé.</string>
+    <string name="ai_mode_basic_selected">L\'analyse IA est distincte des analyses de base. Le mode de base est sélectionné ; l\'analyse IA nécessite un modèle local installé.</string>
+    <string name="ai_local_model_not_installed">Aucun modèle local n\'est installé. L\'analyse de base reste disponible : %1$d enregistrements, niveau %2$s.</string>
+    <string name="ai_model_not_in_registry">Le modèle %1$s n\'est pas présent dans le registre actuel.</string>
+    <string name="ai_local_model_missing_details">L\'analyse avancée nécessite un modèle local : %1$s. Dépôt public : %2$s. Les modèles publics Hugging Face ne nécessitent pas de clé API. Taille d\'environ %3$d Mo, RAM %4$d-%5$d Go.</string>
+    <string name="ai_model_generation_failed">Le modèle local est installé, mais le runtime GGUF n\'a pas pu générer de réponse. L\'analyse de base a été conservée séparément.</string>
+    <string name="ai_model_invalid_format">Le modèle a renvoyé un format non valide. La sortie brute est masquée et l\'analyse de base reste en repli.</string>
+    <string name="ai_question_empty">La question est vide.</string>
+    <string name="ai_question_needs_local_mode">La réponse aux questions nécessite le mode modèle IA local.</string>
+    <string name="ai_question_generation_failed">Le modèle local n\'a pas pu répondre à cette question.</string>
+    <string name="ai_question_invalid_format">Le modèle a renvoyé un format de réponse non valide.</string>
+    <string name="ai_summary_title">Résumé</string>
+    <string name="ai_focus_title">Focus</string>
+    <string name="ai_check_readings">Vérifiez vos lectures</string>
+    <string name="ai_analysis_ready_title">Analyse prête</string>
+    <string name="ai_insufficient_data">Il n\'y a pas encore assez de données pour des statistiques stables : %1$d sur %2$d enregistrements nécessaires.</string>
+    <string name="ai_main_focus">Sur %1$d enregistrements, le focus principal est %2$s. Constats de risque : %3$d.</string>
+    <string name="ai_no_stable_pattern">Sur %1$d enregistrements, aucun nouveau motif stable n\'a été trouvé ; utilisez les métriques comme base.</string>
+    <string name="ai_finding_data">Données : %1$s.</string>
+    <string name="ai_no_stable_findings">Pas encore de constats stables. Métriques actuelles : %1$s.</string>
+    <string name="ai_fallback_recommendation_risk">Ajoutez du contexte au prochain enregistrement et discutez des valeurs préoccupantes répétées avec un médecin.</string>
+    <string name="ai_fallback_recommendation_normal">Continuez le plan de suivi actuel et ajoutez du contexte au prochain enregistrement.</string>
+    <string name="ai_fallback_goal_title">Ajouter du contexte au prochain enregistrement</string>
+
+    <string name="ai_onboarding_intro">Je peux examiner vos enregistrements, trouver des facteurs récurrents et transformer une recommandation utile en un court objectif quotidien. Pour des conseils plus personnels, vous pouvez compléter une configuration rapide.</string>
+    <string name="ai_onboarding_start_question">Commençons la configuration. Quel est votre objectif principal ? Par exemple : suivre plus régulièrement, comprendre les motifs récurrents ou construire une routine plus saine.</string>
+    <string name="ai_status_local_enabled">Le mode modèle local est activé. L\'analyse avancée peut prendre jusqu\'à 20 minutes.</string>
+    <string name="ai_status_download_started">Démarrage du téléchargement de %1$s depuis le dépôt officiel %2$s. Les modèles Qwen publics n\'ont pas besoin de clé API Hugging Face.</string>
+    <string name="ai_status_download_success">Le modèle %1$s est téléchargé. Vous pouvez activer l\'analyse IA locale dans les paramètres.</string>
+    <string name="ai_status_download_failed">Impossible de télécharger %1$s : %2$s</string>
+    <string name="ai_status_context_cleared">L\'historique du chat IA, le contexte de personnalisation, les rapports et les objectifs ont été effacés.</string>
+    <string name="ai_status_no_recommendation">Aucune nouvelle recommandation d\'objectif pour le moment. Les objectifs existants couvrent déjà le constat actuel le plus fort.</string>
+    <string name="ai_status_onboarding_ready">La personnalisation est prête. Vous pouvez maintenant lancer des analyses ou modifier les objectifs dans le chat.</string>
+    <string name="ai_status_basic_running">L\'analyse de base est en cours d\'exécution localement.</string>
+    <string name="ai_status_preparing_answer">Le modèle local prépare une réponse à partir de vos analyses.</string>
+    <string name="ai_status_starting_analysis">Démarrage de l\'analyse IA locale en arrière-plan. Vous pouvez laisser l\'application ouverte ou revenir plus tard.</string>
+    <string name="ai_status_analyzing">Le modèle local analyse les données. Je vous préviendrai quand le résultat sera prêt.</string>
+    <string name="ai_status_analysis_stopped">L\'analyse IA s\'est arrêtée avant d\'être terminée. L\'analyse de base reste disponible.</string>
+    <string name="ai_status_collecting_data">Collecte de données pour l\'analyse.</string>
+    <string name="ai_status_analysis_ready">L\'analyse est prête.</string>
+
+    <string name="ai_checklist_edit_prompt">Modifiez les objectifs ci-dessous. Utilisez la case à cocher lorsqu\'un objectif est atteint, ou l\'icône de la corbeille pour le supprimer.</string>
+    <string name="ai_checklist_marked_done">Marqué comme fait. %1$s</string>
+    <string name="ai_checklist_added_goal">Objectif ajouté : \"%1$s\". %2$s</string>
+    <string name="ai_checklist_progress">%1$d sur %2$d objectifs terminés aujourd\'hui</string>
+    <string name="ai_goal_new">Nouvel objectif</string>
+    <string name="ai_goal_added_from_chat">Ajouté depuis le chat IA</string>
+    <string name="ai_goal_insufficient_data_title">Ajoutez un enregistrement de plus aujourd\'hui</string>
+    <string name="ai_goal_insufficient_data_desc">L\'analyse de base nécessite plus d\'enregistrements avant de pouvoir comparer les motifs de manière fiable.</string>
+
+    <string name="ai_menu_basic_analysis">Lancer l\'analyse de base ? Je recalculerai les analyses locales et montrerai les nouveaux constats.</string>
+    <string name="ai_menu_ai_analysis">Lancer l\'analyse IA ? Je demanderai au modèle local une recommandation contextuelle.</string>
+    <string name="ai_menu_configure_ai">Commencer la configuration IA ? Je poserai quelques questions pour personnaliser les recommandations.</string>
+    <string name="ai_menu_set_reminder">Définir un rappel ? J\'ouvrirai l\'éditeur de rappels après avoir appuyé sur Démarrer.</string>
+    <string name="ai_menu_recommend_goal">Recommander un nouvel objectif ? Je chercherai un objectif utile qui n\'est pas déjà en attente ou actif.</string>
+    <string name="ai_menu_clear_history">Effacer l\'historique IA et le contexte ? Cela supprime les messages du chat, les faits de personnalisation, les rapports IA et les objectifs.</string>
+    <string name="ai_menu_generic_start">Démarrer cette action ?</string>
+
+    <string name="ai_question_main_goal">Quel est votre objectif principal ?</string>
+    <string name="ai_question_age">Entrez votre âge.</string>
+    <string name="ai_question_gender">Entrez votre genre.</string>
+    <string name="ai_question_limitations">Y a-t-il des limitations dont je devrais tenir compte ?</string>
+    <string name="ai_question_motivation">Souhaitez-vous une motivation quotidienne ?</string>
+    <string name="ai_question_treatment">Suivez-vous un traitement, une routine, un médicament ou une intervention ?</string>
+    <string name="ai_question_tracking_time">Quand enregistrez-vous habituellement vos données : matin, soir, après des événements ou irrégulièrement ?</string>
+    <string name="ai_question_triggers">Souhaitez-vous suivre les influences possibles telles que le stress, l\'alimentation, le sommeil, l\'activité, les symptômes ou les changements de routine ?</string>
+
+    <string name="ai_default_motivation">Un petit pas compte aujourd\'hui.</string>
+    <string name="ai_default_focus">Collectez suffisamment de données pour la première analyse.</string>
+    <string name="ai_initial_motivation">Un enregistrement précis suffit aujourd\'hui</string>
+    <string name="ai_initial_focus">Ajoutez 3 à 5 enregistrements pour la première analyse</string>
+
+    <string name="ai_basic_summary_format">L\'analyse de base a recalculé %1$d enregistrements au niveau %2$s. %3$s Constats de risque : %4$d. Constats positifs : %5$d. Métriques : %6$s.</string>
+    <string name="ai_no_stable_findings_yet">Pas encore de constats stables.</string>
+    <string name="ai_new_findings_discovered">%1$d nouveau(x) constat(s)%2$s découvert(s).</string>
+    <string name="ai_no_new_findings">Aucun nouveau constat depuis l\'analyse de base précédente.</string>
+    <string name="ai_no_stable_dashboard_metrics">pas encore de métriques stables sur le tableau de bord</string>
+
+    <string name="ai_finding_prefix_new">Nouveau constat</string>
+    <string name="ai_finding_prefix_current">Constat actuel</string>
+
+    <string name="ai_reminder_label">Rappel</string>
+    <string name="ai_reminder_take_medication">Prendre le médicament : %1$s</string>
+    <string name="ai_reminder_record_value">Enregistrer la valeur : %1$s</string>
+    <string name="ai_reminder_add_record">Ajouter un enregistrement : %1$s</string>
+    <string name="ai_reminder_add_diary">Ajouter une note au journal : %1$s</string>
+    <string name="ai_reminder_scheduled_desc">Rappel programmé : %1$s</string>
+
+    <!-- Adherence logic -->
+    <string name="ai_rec_review_pattern">Examiner le motif de %1$s</string>
+    <string name="ai_rec_continue">Continuer %1$s</string>
+    <string name="ai_rec_watch_today">Surveillez %1$s aujourd\'hui</string>
+    <string name="ai_rec_track_today">Suivez %1$s aujourd\'hui</string>
+    <string name="ai_rec_continue_pattern">Continuez ce motif utile</string>
+    <string name="ai_rec_watch_pattern">Surveillez ce motif répété</string>
+    <string name="ai_rec_track_pattern">Suivez ce motif répété</string>
+    <string name="ai_rec_compare">Comparer %1$s avec %2$s</string>
+    <string name="ai_rec_recheck">Revérifier %1$s aujourd\'hui</string>
+    <string name="ai_rec_keep_helpful">Gardez le motif utile</string>
+
+    <string name="ai_routine">routine</string>
+    <string name="ai_tracked_value">valeur suivie</string>
+    <string name="ai_today_context">contexte d\'aujourd\'hui</string>
+
+    <string name="finding_positive">Positif</string>
+    <string name="level_none">Aucun</string>
+    <string name="level_basic">De base</string>
+    <string name="level_comparative">Comparatif</string>
+    <string name="level_advanced">Avancé</string>
+</resources>
+

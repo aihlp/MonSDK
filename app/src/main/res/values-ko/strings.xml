@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">혈압</string>
+    <string name="settings">설정</string>
+    <string name="tab_record">기록</string>
+    <string name="tab_statistics">통계</string>
+    <string name="record_saved">기록이 저장됨</string>
+    <string name="edit_date_time">날짜 및 시간 편집</string>
+    <string name="ok">확인</string>
+    <string name="cancel">취소</string>
+    <string name="medication">약</string>
+    <string name="edit_medication">약 편집</string>
+    <string name="taken_upper">복용함</string>
+    <string name="missed_upper">놓침</string>
+    <string name="dose">용량</string>
+    <string name="blood_pressure">혈압</string>
+    <string name="pulse">맥박</string>
+    <string name="other">기타</string>
+    <string name="custom_tag">사용자 지정 %1$s 태그</string>
+    <string name="add">추가</string>
+    <string name="note">메모</string>
+    <string name="add_note">메모 추가</string>
+    <string name="statistics">통계</string>
+    <string name="key_metrics">주요 지표</string>
+    <string name="findings">결과</string>
+    <string name="good">좋음</string>
+    <string name="risk">위험</string>
+    <string name="info">정보</string>
+    <string name="history">기록</string>
+    <string name="actions">작업</string>
+    <string name="delete">삭제</string>
+    <string name="taken">복용함</string>
+    <string name="missed">놓침</string>
+    <string name="devices">기기</string>
+    <string name="device_integrations_disabled">이 릴리스에서는 기기 연동이 활성화되지 않았습니다.</string>
+    <string name="health_connect_disabled">이 릴리스에서는 Health Connect 동기화가 활성화되지 않았습니다.</string>
+    <string name="units">단위</string>
+    <string name="units_summary">혈압: mmHg - 맥박: bpm - 용량: mg</string>
+    <string name="about">정보</string>
+    <string name="data_export_import">데이터 내보내기/가져오기</string>
+    <string name="export_csv">CSV 내보내기</string>
+    <string name="import_csv">CSV 가져오기</string>
+    <string name="reminders">알림</string>
+    <string name="create_reminder">알림 만들기</string>
+    <string name="reminder">알림</string>
+    <string name="save">저장</string>
+    <string name="measurement">측정</string>
+    <string name="diary">일기</string>
+    <string name="label">라벨</string>
+    <string name="once">한 번</string>
+    <string name="daily">매일</string>
+    <string name="weekdays">평일</string>
+    <string name="custom_days">사용자 지정 날짜</string>
+    <string name="record_at">기록 %1$s</string>
+</resources>
+

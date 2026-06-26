@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pressione arteriosa</string>
+    <string name="settings">Impostazioni</string>
+    <string name="tab_record">REGISTRA</string>
+    <string name="tab_statistics">STATISTICHE</string>
+    <string name="record_saved">Registrazione salvata</string>
+    <string name="edit_date_time">Modifica data e ora</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Annulla</string>
+    <string name="medication">Farmaco</string>
+    <string name="edit_medication">Modifica farmaco</string>
+    <string name="taken_upper">PRESO</string>
+    <string name="missed_upper">SALTATO</string>
+    <string name="dose">Dose</string>
+    <string name="blood_pressure">Pressione arteriosa</string>
+    <string name="pulse">Polso</string>
+    <string name="other">Altro</string>
+    <string name="custom_tag">Tag %1$s personalizzato</string>
+    <string name="add">Aggiungi</string>
+    <string name="note">Nota</string>
+    <string name="add_note">Aggiungi nota</string>
+    <string name="statistics">Statistiche</string>
+    <string name="key_metrics">Metriche chiave</string>
+    <string name="findings">Risultati</string>
+    <string name="good">Buono</string>
+    <string name="risk">Rischio</string>
+    <string name="info">Info</string>
+    <string name="history">Cronologia</string>
+    <string name="actions">Azioni</string>
+    <string name="delete">Elimina</string>
+    <string name="taken">Preso</string>
+    <string name="missed">Saltato</string>
+    <string name="devices">Dispositivi</string>
+    <string name="device_integrations_disabled">Le integrazioni dei dispositivi non sono abilitate in questa versione.</string>
+    <string name="health_connect_disabled">La sincronizzazione Health Connect non e abilitata in questa versione.</string>
+    <string name="units">Unita</string>
+    <string name="units_summary">Pressione: mmHg - Polso: bpm - Dose: mg</string>
+    <string name="about">Informazioni</string>
+    <string name="data_export_import">Esporta e importa dati</string>
+    <string name="export_csv">Esporta CSV</string>
+    <string name="import_csv">Importa CSV</string>
+    <string name="reminders">Promemoria</string>
+    <string name="create_reminder">Crea promemoria</string>
+    <string name="reminder">Promemoria</string>
+    <string name="save">Salva</string>
+    <string name="measurement">Misurazione</string>
+    <string name="diary">Diario</string>
+    <string name="label">Etichetta</string>
+    <string name="once">Una volta</string>
+    <string name="daily">Ogni giorno</string>
+    <string name="weekdays">Giorni feriali</string>
+    <string name="custom_days">Giorni personalizzati</string>
+    <string name="record_at">Registrazione %1$s</string>
+</resources>
+

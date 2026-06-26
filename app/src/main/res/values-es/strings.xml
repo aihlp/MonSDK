@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Presion arterial</string>
+    <string name="settings">Ajustes</string>
+    <string name="tab_record">REGISTRO</string>
+    <string name="tab_statistics">ESTADISTICAS</string>
+    <string name="record_saved">Registro guardado</string>
+    <string name="edit_date_time">Editar fecha y hora</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancelar</string>
+    <string name="medication">Medicamento</string>
+    <string name="edit_medication">Editar medicamento</string>
+    <string name="taken_upper">TOMADO</string>
+    <string name="missed_upper">OMITIDO</string>
+    <string name="dose">Dosis</string>
+    <string name="blood_pressure">Presion arterial</string>
+    <string name="pulse">Pulso</string>
+    <string name="other">Otro</string>
+    <string name="custom_tag">Etiqueta %1$s personalizada</string>
+    <string name="add">Anadir</string>
+    <string name="note">Nota</string>
+    <string name="add_note">Anadir nota</string>
+    <string name="statistics">Estadisticas</string>
+    <string name="key_metrics">Indicadores clave</string>
+    <string name="findings">Hallazgos</string>
+    <string name="good">Bien</string>
+    <string name="risk">Riesgo</string>
+    <string name="info">Info</string>
+    <string name="history">Historial</string>
+    <string name="actions">Acciones</string>
+    <string name="delete">Eliminar</string>
+    <string name="taken">Tomado</string>
+    <string name="missed">Omitido</string>
+    <string name="devices">Dispositivos</string>
+    <string name="device_integrations_disabled">Las integraciones de dispositivos no estan activadas en esta version.</string>
+    <string name="health_connect_disabled">La sincronizacion de Health Connect no esta activada en esta version.</string>
+    <string name="units">Unidades</string>
+    <string name="units_summary">Presion arterial: mmHg - Pulso: lpm - Dosis: mg</string>
+    <string name="about">Acerca de</string>
+    <string name="data_export_import">Exportar e importar datos</string>
+    <string name="export_csv">Exportar CSV</string>
+    <string name="import_csv">Importar CSV</string>
+    <string name="reminders">Recordatorios</string>
+    <string name="create_reminder">Crear recordatorio</string>
+    <string name="reminder">Recordatorio</string>
+    <string name="save">Guardar</string>
+    <string name="measurement">Medicion</string>
+    <string name="diary">Diario</string>
+    <string name="label">Etiqueta</string>
+    <string name="once">Una vez</string>
+    <string name="daily">Diario</string>
+    <string name="weekdays">Dias laborables</string>
+    <string name="custom_days">Dias personalizados</string>
+    <string name="record_at">Registro %1$s</string>
+    <string name="ai_analysis_not_configured">El análisis de IA no está configurado. Primero activa el asistente de IA y elige un modo.</string>
+    <string name="ai_assistant_off">El asistente de IA está apagado.</string>
+    <string name="ai_mode_basic_selected">El análisis de IA es independiente de las analíticas básicas. El modo básico está seleccionado; el análisis de IA necesita un modelo local instalado.</string>
+    <string name="ai_local_model_not_installed">No hay ningún modelo local instalado. El análisis básico sigue disponible: %1$d registros, nivel %2$s.</string>
+    <string name="ai_model_not_in_registry">El modelo %1$s no está presente en el registro actual.</string>
+    <string name="ai_local_model_missing_details">El análisis avanzado necesita un modelo local: %1$s. Repositorio público: %2$s. Los modelos públicos de Hugging Face no necesitan clave de API. Tamaño aproximado %3$d MB, RAM %4$d-%5$d GB.</string>
+    <string name="ai_model_generation_failed">El modelo local está instalado, pero el tiempo de ejecución de GGUF no pudo generar una respuesta. El análisis básico se mantuvo por separado.</string>
+    <string name="ai_model_invalid_format">El modelo devolvió un formato no válido. La salida sin procesar está oculta y el análisis básico permanece como respaldo.</string>
+    <string name="ai_question_empty">La pregunta está vacía.</string>
+    <string name="ai_question_needs_local_mode">La respuesta a preguntas necesita el modo de modelo de IA local.</string>
+    <string name="ai_question_generation_failed">El modelo local no pudo responder a esta pregunta.</string>
+    <string name="ai_question_invalid_format">El modelo devolvió un formato de respuesta no válido.</string>
+    <string name="ai_summary_title">Resumen</string>
+    <string name="ai_focus_title">Enfoque</string>
+    <string name="ai_check_readings">Revisa tus lecturas</string>
+    <string name="ai_analysis_ready_title">Análisis listo</string>
+    <string name="ai_insufficient_data">Aún no hay suficientes datos para estadísticas estables: %1$d de %2$d registros necesarios.</string>
+    <string name="ai_main_focus">En %1$d registros, el enfoque principal es %2$s. Hallazgos de riesgo: %3$d.</string>
+    <string name="ai_no_stable_pattern">En %1$d registros, no se encontró ningún patrón nuevo estable; utiliza las métricas como base.</string>
+    <string name="ai_finding_data">Datos: %1$s.</string>
+    <string name="ai_no_stable_findings">Aún no hay hallazgos estables. Métricas actuales: %1$s.</string>
+    <string name="ai_fallback_recommendation_risk">Añade contexto al siguiente registro y consulta con un médico los valores preocupantes repetidos.</string>
+    <string name="ai_fallback_recommendation_normal">Continúa con el plan de seguimiento actual y añade contexto al siguiente registro.</string>
+    <string name="ai_fallback_goal_title">Añadir contexto al siguiente registro</string>
+
+    <string name="ai_onboarding_intro">Puedo revisar tus registros, encontrar factores recurrentes y convertir una recomendación útil en un pequeño objetivo diario. Para una orientación más personal, puedes completar una configuración rápida.</string>
+    <string name="ai_onboarding_start_question">Empecemos la configuración. ¿Cuál es tu objetivo principal? Por ejemplo: realizar un seguimiento más constante, comprender los patrones recurrentes o crear una rutina más saludable.</string>
+    <string name="ai_status_local_enabled">El modo de modelo local está activado. El análisis avanzado puede tardar hasta 20 minutos.</string>
+    <string name="ai_status_download_started">Iniciando la descarga de %1$s desde el repositorio oficial %2$s. Los modelos públicos de Qwen no necesitan una clave de API de Hugging Face.</string>
+    <string name="ai_status_download_success">El modelo %1$s se ha descargado. Puedes activar el análisis de IA local en los ajustes.</string>
+    <string name="ai_status_download_failed">No se pudo descargar %1$s: %2$s</string>
+    <string name="ai_status_context_cleared">Se han borrado el historial de chat de IA, el contexto de personalización, los informes y los objetivos.</string>
+    <string name="ai_status_no_recommendation">No hay nuevas recomendaciones de objetivos en este momento. Los objetivos existentes ya cubren el hallazgo actual más importante.</string>
+    <string name="ai_status_onboarding_ready">La personalización está lista. Ahora puedes ejecutar análisis o editar objetivos en el chat.</string>
+    <string name="ai_status_basic_running">El análisis básico se está ejecutando localmente.</string>
+    <string name="ai_status_preparing_answer">El modelo local está preparando una respuesta a partir de tus analíticas.</string>
+    <string name="ai_status_starting_analysis">Iniciando el análisis de IA local en segundo plano. Puedes dejar la aplicación abierta o volver más tarde.</string>
+    <string name="ai_status_analyzing">El modelo local está analizando los datos. Te avisaré cuando el resultado esté listo.</string>
+    <string name="ai_status_analysis_stopped">El análisis de IA se detuvo antes de completarse. El análisis básico sigue disponible.</string>
+    <string name="ai_status_collecting_data">Recopilando datos para el análisis.</string>
+    <string name="ai_status_analysis_ready">El análisis está listo.</string>
+
+    <string name="ai_checklist_edit_prompt">Edita los objetivos a continuación. Utiliza la casilla de verificación cuando logres un objetivo, o el icono de la papelera para eliminarlo.</string>
+    <string name="ai_checklist_marked_done">Marcado como hecho. %1$s</string>
+    <string name="ai_checklist_added_goal">Objetivo añadido: \"%1$s\". %2$s</string>
+    <string name="ai_checklist_progress">%1$d de %2$d objetivos completados hoy</string>
+    <string name="ai_goal_new">Nuevo objetivo</string>
+    <string name="ai_goal_added_from_chat">Añadido desde el chat de IA</string>
+    <string name="ai_goal_insufficient_data_title">Añade un registro más hoy</string>
+    <string name="ai_goal_insufficient_data_desc">Las analíticas básicas necesitan más registros antes de poder comparar patrones de forma fiable.</string>
+
+    <string name="ai_menu_basic_analysis">¿Ejecutar análisis básico? Recalcularé las analíticas locales y mostraré nuevos hallazgos.</string>
+    <string name="ai_menu_ai_analysis">¿Ejecutar análisis de IA? Le pediré al modelo local una recomendación contextual.</string>
+    <string name="ai_menu_configure_ai">¿Iniciar configuración de IA? Haré algunas preguntas para personalizar las recomendaciones.</string>
+    <string name="ai_menu_set_reminder">¿Establecer un recordatorio? Abriré el editor de recordatorios después de que pulses Iniciar.</string>
+    <string name="ai_menu_recommend_goal">¿Recomendar un nuevo objetivo? Buscaré un objetivo útil que no esté ya pendiente o activo.</string>
+    <string name="ai_menu_clear_history">¿Borrar el historial de IA y el contexto? Esto elimina los mensajes del chat, los datos de personalización, los informes de IA y los objetivos.</string>
+    <string name="ai_menu_generic_start">¿Iniciar esta acción?</string>
+
+    <string name="ai_question_main_goal">¿Cuál es tu objetivo principal?</string>
+    <string name="ai_question_age">Introduce tu edad.</string>
+    <string name="ai_question_gender">Introduce tu género.</string>
+    <string name="ai_question_limitations">¿Hay alguna limitación que deba tener en cuenta?</string>
+    <string name="ai_question_motivation">¿Te gustaría recibir motivación diaria?</string>
+    <string name="ai_question_treatment">¿Haces un seguimiento de algún tratamiento, rutina, medicación o intervención?</string>
+    <string name="ai_question_tracking_time">¿Cuándo sueles registrar los datos: por la mañana, por la tarde, después de eventos o de forma irregular?</string>
+    <string name="ai_question_triggers">¿Te gustaría realizar un seguimiento de las posibles influencias, como el estrés, la comida, el sueño, la actividad, los síntomas o los cambios en la rutina?</string>
+
+    <string name="ai_default_motivation">Cada pequeño paso cuenta hoy.</string>
+    <string name="ai_default_focus">Recopila suficientes datos para el primer análisis.</string>
+    <string name="ai_initial_motivation">Un registro preciso es suficiente hoy</string>
+    <string name="ai_initial_focus">Añade 3-5 registros para el primer análisis</string>
+
+    <string name="ai_basic_summary_format">El análisis básico ha recalculado %1$d registros en el nivel %2$s. %3$s Hallazgos de riesgo: %4$d. Hallazgos positivos: %5$d. Métricas: %6$s.</string>
+    <string name="ai_no_stable_findings_yet">Aún no hay hallazgos estables.</string>
+    <string name="ai_new_findings_discovered">descubierto(s) %1$d nuevo(s) hallazgo(s)%2$s.</string>
+    <string name="ai_no_new_findings">No hay nuevos hallazgos desde el análisis básico anterior.</string>
+    <string name="ai_no_stable_dashboard_metrics">aún no hay métricas estables en el tablero</string>
+
+    <string name="ai_finding_prefix_new">Nuevo hallazgo</string>
+    <string name="ai_finding_prefix_current">Hallazgo actual</string>
+
+    <string name="ai_reminder_label">Recordatorio</string>
+    <string name="ai_reminder_take_medication">Tomar medicación: %1$s</string>
+    <string name="ai_reminder_record_value">Registrar valor: %1$s</string>
+    <string name="ai_reminder_add_record">Añadir registro: %1$s</string>
+    <string name="ai_reminder_add_diary">Añadir nota al diario: %1$s</string>
+    <string name="ai_reminder_scheduled_desc">Recordatorio programado: %1$s</string>
+
+    <!-- Adherence logic -->
+    <string name="ai_rec_review_pattern">Revisar el patrón de %1$s</string>
+    <string name="ai_rec_continue">Continuar con %1$s</string>
+    <string name="ai_rec_watch_today">Vigila %1$s hoy</string>
+    <string name="ai_rec_track_today">Sigue %1$s hoy</string>
+    <string name="ai_rec_continue_pattern">Continúa con este patrón útil</string>
+    <string name="ai_rec_watch_pattern">Vigila este patrón repetido</string>
+    <string name="ai_rec_track_pattern">Sigue este patrón repetido</string>
+    <string name="ai_rec_compare">Comparar %1$s con %2$s</string>
+    <string name="ai_rec_recheck">Vuelve a comprobar %1$s hoy</string>
+    <string name="ai_rec_keep_helpful">Mantén el patrón útil</string>
+
+    <string name="ai_routine">rutina</string>
+    <string name="ai_tracked_value">valor seguido</string>
+    <string name="ai_today_context">contexto de hoy</string>
+
+    <string name="finding_positive">Positivo</string>
+    <string name="level_none">Ninguno</string>
+    <string name="level_basic">Básico</string>
+    <string name="level_comparative">Comparativo</string>
+    <string name="level_advanced">Avanzado</string>
+</resources>
+
