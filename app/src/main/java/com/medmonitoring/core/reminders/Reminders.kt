@@ -14,6 +14,7 @@ import com.medmonitoring.app.MainActivity
 import com.medmonitoring.app.R
 import com.medmonitoring.app.di.AndroidStringProvider
 import com.medmonitoring.core.ai.AiChatRepository
+import com.medmonitoring.core.program.ProgramModuleDefinition
 import com.medmonitoring.core.storage.db.DatabaseMigrations
 import com.medmonitoring.core.storage.db.MedDatabase
 import com.medmonitoring.core.storage.entity.ReminderEntity
@@ -27,6 +28,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class ReminderReceiver : BroadcastReceiver() {
+    @Inject lateinit var programModule: ProgramModuleDefinition
+
     override fun onReceive(context: Context, intent: Intent) {
         val title = intent.getStringExtra("label") ?: context.getString(R.string.reminder)
         val type = intent.getStringExtra("type").orEmpty()
@@ -65,7 +68,11 @@ class ReminderReceiver : BroadcastReceiver() {
                 .enableMultiInstanceInvalidation()
                 .build()
             try {
-                AiChatRepository(db, AndroidStringProvider(context.applicationContext)).postReminderNotification(title, type)
+                AiChatRepository(
+                    db,
+                    AndroidStringProvider(context.applicationContext),
+                    programModule.program
+                ).postReminderNotification(title, type)
             } finally {
                 db.close()
                 pendingResult.finish()

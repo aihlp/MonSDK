@@ -378,19 +378,6 @@ object BloodPressureDefinitions {
                         )
                     )
                 ),
-                HealthConnectMapping(
-                    recordType = HealthConnectRecordType.BLOOD_GLUCOSE,
-                    metricMappings = emptyMap(),
-                    role = HealthConnectMappingRole.CONTEXT_TAG,
-                    rules = listOf(
-                        SensorRule(
-                            sensorId = "hc.blood_glucose.level",
-                            transformType = TransformType.TAG,
-                            threshold = 7.8,
-                            targetTag = "context.nutrition.glucose_high"
-                        )
-                    )
-                )
             ),
             backgroundReadEnabled = true
         ),

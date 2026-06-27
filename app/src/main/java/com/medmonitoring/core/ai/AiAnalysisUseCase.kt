@@ -80,7 +80,7 @@ class AiAnalysisUseCase @Inject constructor(
             ?.checklistJson
             ?.let(AiJsonCodec::checklistFromJson)
             .orEmpty()
-        val goals = db.goalDao().getForProgram(AiConversationContract.DEFAULT_PROGRAM_ID)
+        val goals = db.goalDao().getForProgram(program.programId)
         val request = promptBuilder.buildDailyRequest(
             program = program,
             records = records,
@@ -143,7 +143,7 @@ class AiAnalysisUseCase @Inject constructor(
             ?.checklistJson
             ?.let(AiJsonCodec::checklistFromJson)
             .orEmpty()
-        val goals = db.goalDao().getForProgram(AiConversationContract.DEFAULT_PROGRAM_ID)
+        val goals = db.goalDao().getForProgram(program.programId)
         val request = promptBuilder.buildQuestionRequest(
             question = trimmed,
             program = program,

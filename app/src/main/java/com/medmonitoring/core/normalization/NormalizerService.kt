@@ -61,25 +61,16 @@ class NormalizerService @Inject constructor(
     }
 
     private suspend fun mergeManual(record: UserRecord) {
-        val key = slotKey(record.timestamp) ?: run {
-            repository.upsertRecord(record)
-            return
-        }
-        val existing = repository.getRecords().firstOrNull { it.matchesSlot(key) }
-        val automatic = automaticRecordFor(key)
-        val merged = record.copy(
-            id = key.recordId,
-            programId = program.programId,
-            dimensions = (record.dimensions + slotDimension(key) + automatic?.dimensions.orEmpty() +
-                autoKeysDimension(automatic?.measurements.orEmpty().filterNot { it.key in record.measurements.map(Measurement::key).toSet() }))
-                .filterNot { it.group == "system" && it.key == "auto_measurements" && automatic == null }
-                .distinctBy { "${it.group}:${it.key}" },
-            measurements = mergeMeasurements(record.measurements, automatic?.measurements.orEmpty()),
-            createdAt = existing?.createdAt ?: record.createdAt,
-            updatedAt = Instant.now(),
-            sourceType = SourceType.MANUAL
+        // Manual submissions are append-only.  Record slots belong exclusively to
+        // automatically collected source data; applying a slot-derived ID here
+        // made every manual submission in the same slot overwrite the prior one.
+        repository.upsertRecord(
+            record.copy(
+                programId = program.programId,
+                updatedAt = Instant.now(),
+                sourceType = SourceType.MANUAL
+            )
         )
-        repository.replaceSlotRecord(merged, automaticContributors(key))
     }
 
     private suspend fun rebuildSlot(key: SlotKey) {

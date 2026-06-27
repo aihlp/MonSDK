@@ -26,7 +26,6 @@ object DatabaseModule {
             "med_database"
         )
             .addMigrations(*DatabaseMigrations.ALL)
-            .fallbackToDestructiveMigration()
             .enableMultiInstanceInvalidation()
             .build()
     }

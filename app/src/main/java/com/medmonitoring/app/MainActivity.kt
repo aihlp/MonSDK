@@ -310,6 +310,8 @@ private fun RecordScreen(viewModel: MedViewModel) {
     val customTags by viewModel.customTags.collectAsState()
     val state = viewModel.input.value
     val context = LocalContext.current
+    val recordSavedMessage = stringResource(R.string.record_saved)
+    val recordSaveFailedMessage = stringResource(R.string.record_save_failed)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     Scaffold(
@@ -320,8 +322,14 @@ private fun RecordScreen(viewModel: MedViewModel) {
             if (ConfigStrictMode.assertRecordWidgetAllowed(viewModel.uiDefinition, WidgetType.SaveButtonWidget)) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        viewModel.saveRecord()
-                        scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.record_saved)) }
+                        viewModel.saveRecord { result ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    if (result.isSuccess) recordSavedMessage
+                                    else result.exceptionOrNull()?.message ?: recordSaveFailedMessage
+                                )
+                            }
+                        }
                     },
                     text = { Text(state.saveLabel(viewModel.program.saveActionDefinition)) },
                     icon = {}

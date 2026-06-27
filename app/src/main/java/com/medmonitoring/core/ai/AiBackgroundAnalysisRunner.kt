@@ -17,17 +17,24 @@ import kotlinx.coroutines.withContext
 
 class AiBackgroundAnalysisRunner(
     private val context: Context,
+    private val expectedProgramId: String? = null,
     private val programModule: ProgramModuleDefinition = ActiveProgramModuleProvider.current()
 ) {
     private val stringProvider = AndroidStringProvider(context.applicationContext)
 
     suspend fun run(): AiBackgroundAnalysisResult {
+        if (expectedProgramId != null && expectedProgramId != programModule.program.programId) {
+            Log.e(TAG, "Program mismatch: expected=$expectedProgramId active=${programModule.program.programId}")
+            return AiBackgroundAnalysisResult.Unavailable(
+                stringProvider.getString(R.string.ai_status_analysis_stopped)
+            )
+        }
         val db = Room.databaseBuilder(context, MedDatabase::class.java, DATABASE_NAME)
             .addMigrations(*DatabaseMigrations.ALL)
             .enableMultiInstanceInvalidation()
             .build()
         return try {
-            val chatRepository = AiChatRepository(db, stringProvider)
+            val chatRepository = AiChatRepository(db, stringProvider, programModule.program)
             chatRepository.ensureStorageInitialized()
             AiProfileRepository(context, db).ensureModelRegistrySeeded()
 
@@ -61,7 +68,7 @@ class AiBackgroundAnalysisRunner(
             Log.e(TAG, "Background AI analysis failed", error)
             withContext(NonCancellable) {
                 runCatching {
-                    val chatRepository = AiChatRepository(db, stringProvider)
+                    val chatRepository = AiChatRepository(db, stringProvider, programModule.program)
                     chatRepository.showAiAnalysis(
                         AiAnalysisResult.Unavailable(stringProvider.getString(R.string.ai_status_analysis_stopped))
                     )

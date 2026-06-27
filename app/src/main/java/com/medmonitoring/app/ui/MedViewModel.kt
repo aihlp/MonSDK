@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
@@ -16,6 +17,7 @@ import com.medmonitoring.core.ai.AiGoalStatus
 import com.medmonitoring.core.ai.AiMenuAction
 import com.medmonitoring.core.ai.AndroidLlamaRuntime
 import com.medmonitoring.core.ai.AiProfileRepository
+import com.medmonitoring.core.ai.AiModelDownloadWorker
 import com.medmonitoring.core.ai.AiSettingsContract
 import com.medmonitoring.core.analytics.AnalyticsEngine
 import com.medmonitoring.core.analytics.BaseAnalysisUseCase
@@ -147,11 +149,27 @@ class MedViewModel @Inject constructor(
     private val aiDailyAnalysisBusy = WorkManager.getInstance(appContext)
         .getWorkInfosForUniqueWorkFlow(AiAnalysisWorker.UNIQUE_WORK)
         .map { work -> work.any { it.state == WorkInfo.State.RUNNING } }
-    val aiChatBusy = combine(_aiChatOperationBusy, aiManualAnalysisBusy, aiDailyAnalysisBusy) { operationBusy, manualBusy, dailyBusy ->
-        operationBusy || manualBusy || dailyBusy
-    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    private val _aiModelDownloadStatus = MutableStateFlow<String?>(null)
-    val aiModelDownloadStatus: StateFlow<String?> = _aiModelDownloadStatus.asStateFlow()
+    // A native process crash can leave a persisted WorkManager row in RUNNING
+    // state. Do not permanently disable the AI UI because of that stale row:
+    // runOnce uses REPLACE and safely supersedes it.
+    val aiChatBusy = _aiChatOperationBusy.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    val aiModelDownloadStatus = WorkManager.getInstance(appContext)
+        .getWorkInfosByTagFlow(AiModelDownloadWorker.TAG)
+        .map { work ->
+            val active = work.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
+                ?: return@map null
+            val downloaded = active.progress.getLong(AiModelDownloadWorker.KEY_DOWNLOADED, 0L)
+            val total = active.progress.getLong(AiModelDownloadWorker.KEY_TOTAL, 0L)
+            val modelId = active.progress.getString(AiModelDownloadWorker.KEY_MODEL_ID)
+                ?: active.tags.firstOrNull { it.startsWith(AiModelDownloadWorker.MODEL_TAG_PREFIX) }
+                    ?.removePrefix(AiModelDownloadWorker.MODEL_TAG_PREFIX)
+                ?: "model"
+            if (total > 0L) {
+                val percent = (downloaded * 100 / total).coerceIn(0, 100)
+                "Downloading $modelId: $percent% (${downloaded / 1_048_576} / ${total / 1_048_576} MB)"
+            } else "Preparing $modelId download…"
+        }
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
     val aiRuntimeAvailable: Boolean = AndroidLlamaRuntime.isAvailable
     val aiChecklist = goals.map { currentGoals ->
         currentGoals
@@ -235,7 +253,7 @@ class MedViewModel @Inject constructor(
         viewModelScope.launch { repository.upsertCustomTag(groupId, label) }
     }
 
-    fun saveRecord() {
+    fun saveRecord(onResult: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
             val state = input.value
             val requiredMetrics = program.metricComponents
@@ -289,11 +307,17 @@ class MedViewModel @Inject constructor(
                 put("note", state.note)
                 put("createdAt", Instant.now().toEpochMilli())
             }
-            ingestionManager.ingestData(payload.toString(), SourceType.MANUAL)
-            selectedTags.clear()
-            input.value = state.copy(
-                timestamp = Instant.now()
-            )
+            runCatching {
+                ingestionManager.ingestData(payload.toString(), SourceType.MANUAL)
+            }.onSuccess { result ->
+                Log.i("RecordSave", "Saved manual raw event ${result.rawEventId}")
+                selectedTags.clear()
+                input.value = state.copy(timestamp = Instant.now())
+                onResult(Result.success(Unit))
+            }.onFailure { error ->
+                Log.e("RecordSave", "Manual record was not saved", error)
+                onResult(Result.failure(error))
+            }
         }
     }
 
@@ -388,24 +412,7 @@ class MedViewModel @Inject constructor(
 
     fun requestModelDownload(id: String) {
         if (!hasAiAccess()) return
-        viewModelScope.launch {
-            _aiModelDownloadStatus.value = stringProvider.getString(R.string.ai_download_started_status)
-            aiChatRepository.requestModelDownload(id)
-            val result = aiProfileRepository.downloadModel(id)
-            _aiModelDownloadStatus.value = if (result.isSuccess) {
-                stringProvider.getString(R.string.ai_download_complete_status)
-            } else {
-                stringProvider.getString(
-                    R.string.ai_download_failed_status,
-                    result.exceptionOrNull()?.message ?: stringProvider.getString(R.string.ai_unknown_error)
-                )
-            }
-            aiChatRepository.reportModelDownloadFinished(
-                modelId = id,
-                success = result.isSuccess,
-                details = result.exceptionOrNull()?.message ?: ""
-            )
-        }
+        AiModelDownloadWorker.enqueue(appContext, id)
     }
 
     fun runAiAnalysisNow() {
@@ -445,7 +452,7 @@ class MedViewModel @Inject constructor(
                     AiMenuAction.BASIC_ANALYSIS -> aiChatRepository.showBaseAnalysis(baseAnalysisUseCase.run())
                     AiMenuAction.AI_ANALYSIS -> {
                         aiChatRepository.showAnalysisStatus(stringProvider.getString(R.string.ai_status_starting_analysis))
-                        AiAnalysisWorker.runOnce(appContext)
+                        AiAnalysisWorker.runOnce(appContext, program.programId)
                     }
                     AiMenuAction.CONFIGURE_AI -> aiChatRepository.startOnboarding()
                     AiMenuAction.SET_REMINDER -> onOpenReminder()
@@ -463,7 +470,7 @@ class MedViewModel @Inject constructor(
         viewModelScope.launch {
             if (_aiChatOperationBusy.value || aiChatBusy.value) return@launch
             aiChatRepository.showAnalysisStatus(stringProvider.getString(R.string.ai_status_starting_analysis))
-            AiAnalysisWorker.runOnce(appContext)
+            AiAnalysisWorker.runOnce(appContext, program.programId)
         }
     }
 

@@ -10,18 +10,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface IngestionAdapter {
-    suspend fun ingestData(payloadJson: String, source: SourceType = SourceType.MANUAL)
+    suspend fun ingestData(payloadJson: String, source: SourceType = SourceType.MANUAL): IngestionResult
 }
+
+data class IngestionResult(val rawEventId: String)
 
 @Singleton
 class IngestionManager @Inject constructor(
     private val repository: EventRepository,
     private val normalizerService: NormalizerService
 ) : IngestionAdapter {
-    override suspend fun ingestData(payloadJson: String, source: SourceType) {
+    override suspend fun ingestData(payloadJson: String, source: SourceType): IngestionResult {
+        val rawEventId = UUID.randomUUID().toString()
         repository.insertRawEvent(
             RawSourceEvent(
-                id = UUID.randomUUID().toString(),
+                id = rawEventId,
                 sourceType = source,
                 payloadJson = payloadJson,
                 capturedAt = Instant.now(),
@@ -31,5 +34,6 @@ class IngestionManager @Inject constructor(
             )
         )
         normalizerService.processPendingEvents()
+        return IngestionResult(rawEventId)
     }
 }

@@ -14,7 +14,10 @@ class AiModelFileStoreTest {
     @get:Rule
     val temp = TemporaryFolder()
 
-    private val spec = AiModelRegistry.recommendedModels.first()
+    private val spec = AiModelRegistry.recommendedModels.first().copy(
+        expectedBytes = 3,
+        sha256 = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
+    )
 
     @Test
     fun existingModelFileIsReusedWithoutNewDownload() {
@@ -35,9 +38,9 @@ class AiModelFileStoreTest {
         val dir = temp.newFolder("models")
         val store = AiModelFileStore(dir)
         val state = store.prepare(spec) as AiModelFileState.NeedsDownload
-        state.temp.writeBytes(byteArrayOf(4, 5, 6))
+        state.temp.writeBytes(byteArrayOf(1, 2, 3))
 
-        val target = store.commit(state.temp, state.target)
+        val target = store.commit(spec, state.temp, state.target)
 
         assertTrue(target.exists())
         assertEquals(3L, target.length())
@@ -51,6 +54,6 @@ class AiModelFileStoreTest {
         val state = store.prepare(spec) as AiModelFileState.NeedsDownload
         state.temp.writeBytes(byteArrayOf())
 
-        store.commit(state.temp, state.target)
+        store.commit(spec, state.temp, state.target)
     }
 }

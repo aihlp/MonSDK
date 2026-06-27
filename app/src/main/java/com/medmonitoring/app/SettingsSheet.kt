@@ -248,9 +248,10 @@ private fun AiAssistantSettings(viewModel: MedViewModel, onOpenAi: (Boolean) -> 
                                         Text(model.displayName, style = MaterialTheme.typography.titleSmall)
                                         Text(stringResource(R.string.ai_model_specs, model.quantization, model.sizeMb, model.minRamGb, model.recommendedRamGb))
                                     }
-                                    AssistChip(
-                                        onClick = {},
-                                        label = { Text(if (index == 0) stringResource(R.string.ai_debug) else model.status.lowercase()) }
+                                    Text(
+                                        model.status.lowercase(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 Text(model.repo, style = MaterialTheme.typography.bodySmall)

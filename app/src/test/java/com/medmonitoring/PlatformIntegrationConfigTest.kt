@@ -25,8 +25,7 @@ class PlatformIntegrationConfigTest {
                 HealthConnectRecordType.STEPS,
                 HealthConnectRecordType.EXERCISE,
                 HealthConnectRecordType.SLEEP,
-                HealthConnectRecordType.WEIGHT,
-                HealthConnectRecordType.BLOOD_GLUCOSE
+                HealthConnectRecordType.WEIGHT
             ),
             integrations.healthConnectMappings
                 .filter { it.role == HealthConnectMappingRole.CONTEXT_TAG }

@@ -56,6 +56,8 @@ data class AiModelSpec(
     val minRamGb: Int,
     val recommendedRamGb: Int,
     val downloadUrl: String,
+    val expectedBytes: Long,
+    val sha256: String,
     val status: AiModelStatus = AiModelStatus.AVAILABLE,
     val notes: String
 )

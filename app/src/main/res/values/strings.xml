@@ -8,6 +8,7 @@
     <string name="tab_record">RECORD</string>
     <string name="tab_statistics">STATISTICS</string>
     <string name="record_saved">Record saved</string>
+    <string name="record_save_failed">Unable to save record</string>
     <string name="edit_date_time">Edit date and time</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>

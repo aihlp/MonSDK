@@ -21,6 +21,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.medmonitoring.app.MainActivity
 import com.medmonitoring.app.R
 import com.medmonitoring.core.storage.db.DatabaseMigrations
@@ -34,14 +35,20 @@ class AiAnalysisWorker(
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         if (isLocalModelMode()) {
-            setForeground(createForegroundInfo(applicationContext.getString(R.string.ai_analysis_running)))
+            updateForeground(applicationContext.getString(R.string.ai_analysis_running))
         }
-        val result = AiBackgroundAnalysisRunner(applicationContext).run()
+        val result = AiBackgroundAnalysisRunner(
+            context = applicationContext,
+            expectedProgramId = inputData.getString(KEY_PROGRAM_ID).orEmpty().ifBlank { null }
+        ).run()
         if (result is AiBackgroundAnalysisResult.Ready) {
             updateForeground(applicationContext.getString(R.string.ai_analysis_ready))
             if (result.notifyWhenReady) {
                 showMotivation(result.response.notification?.body?.ifBlank { null } ?: applicationContext.getString(R.string.ai_analysis_ready))
             }
+        }
+        if (result is AiBackgroundAnalysisResult.Unavailable) {
+            updateForeground(result.reason)
         }
         return Result.success()
     }
@@ -136,12 +143,16 @@ class AiAnalysisWorker(
             )
         }
 
-        fun runOnce(context: Context) {
+        fun runOnce(context: Context, programId: String? = null) {
             WorkManager.getInstance(context).enqueueUniqueWork(
                 MANUAL_WORK,
                 ExistingWorkPolicy.REPLACE,
-                OneTimeWorkRequestBuilder<AiAnalysisWorker>().build()
+                OneTimeWorkRequestBuilder<AiAnalysisWorker>()
+                    .setInputData(workDataOf(KEY_PROGRAM_ID to programId.orEmpty()))
+                    .build()
             )
         }
+
+        const val KEY_PROGRAM_ID = "program_id"
     }
 }

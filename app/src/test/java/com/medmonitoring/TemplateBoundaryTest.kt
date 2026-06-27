@@ -21,15 +21,15 @@ class TemplateBoundaryTest {
             assertFalse("Prototype artifact must not be copied into template: $it", File(root, it).exists())
         }
         assertFalse("Pixel debug screenshots must not be copied into template", root.walkTopDown().any { it.name.startsWith("pixel8-") })
-        assertFalse("Vendored native runtime must be product-specific", File(root, "src/main/cpp").exists())
+        assertTrue("The local AI runtime must be available to every generated app", File(root, "src/main/cpp/llama.cpp").isDirectory)
     }
 
     @Test
-    fun defaultBuildDoesNotRequireNativeAiRuntime() {
+    fun localAiBuildIncludesArm64NativeRuntime() {
         val buildFile = File(root, "build.gradle").readText()
-        assertFalse(buildFile.contains("externalNativeBuild"))
-        assertFalse(buildFile.contains("ndkVersion"))
-        assertFalse(buildFile.contains("abiFilters"))
+        assertTrue(buildFile.contains("externalNativeBuild"))
+        assertTrue(buildFile.contains("ndkVersion"))
+        assertTrue(buildFile.contains("arm64-v8a"))
     }
 
     @Test
@@ -54,6 +54,31 @@ class TemplateBoundaryTest {
                 text.contains("com.medmonitoring.program.")
             )
         }
+    }
+
+    @Test
+    fun aiCoreDoesNotHardcodeReferenceProgramId() {
+        val aiFiles = File(root, "src/main/java/com/medmonitoring/core/ai").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .toList()
+
+        aiFiles.forEach { file ->
+            assertFalse(
+                "AI core must use injected/current program id, not the reference app id: ${file.path}",
+                file.readText().contains("blood-pressure-monitor")
+            )
+        }
+    }
+
+    @Test
+    fun referenceManifestDoesNotRequestGlucosePermission() {
+        val manifest = File(root, "src/main/AndroidManifest.xml").readText()
+
+        assertTrue(manifest.contains("android.permission.health.READ_BLOOD_PRESSURE"))
+        assertFalse(
+            "Glucose permission belongs to diabetes products, not the blood-pressure reference APK.",
+            manifest.contains("android.permission.health.READ_BLOOD_GLUCOSE")
+        )
     }
 
     @Test

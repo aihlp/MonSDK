@@ -7,11 +7,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.medmonitoring.core.domain.model.MedicationStatus
 import com.medmonitoring.core.domain.model.RawSourceEvent
 import com.medmonitoring.core.domain.model.SourceType
+import com.medmonitoring.core.analytics.AnalyticsEngine
 import com.medmonitoring.core.normalization.NormalizerService
 import com.medmonitoring.core.storage.db.MedDatabase
 import com.medmonitoring.core.storage.repository.EventRepositoryImpl
 import com.medmonitoring.program.bloodpressure.BloodPressureDefinitions
 import java.time.Instant
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -93,6 +95,36 @@ class DataPipelineIntegrationTest {
     }
 
     @Test
+    fun tenManualRecordsInTheSameSlotRemainDistinctAndFeedAnalytics() = runBlocking {
+        val timestamp = Instant.parse("2026-06-15T06:00:00Z")
+        repeat(10) { index ->
+            val medicationStatus = if (index % 2 == 0) "TAKEN" else "MISSED"
+            val tag = listOf("sleep", "stress", "activity")[index % 3]
+            repository.insertRawEvent(
+                RawSourceEvent(
+                    id = "manual-$index",
+                    sourceType = SourceType.MANUAL,
+                    payloadJson = """{"id":"record-$index","timestamp":${timestamp.toEpochMilli()},"measurements":{"systolic":${120 + index},"diastolic":${80 + index},"pulse":${60 + index}},"events":[{"key":"medication","name":"Lisinopril","status":"$medicationStatus"}],"dimensions":[{"group":"custom","key":"$tag","label":"$tag"}]}""",
+                    capturedAt = timestamp,
+                    sourceTimestamp = null,
+                    schemaVersion = 1,
+                    error = null
+                )
+            )
+        }
+
+        normalizer.processPendingEvents()
+
+        val records = repository.getRecords()
+        assertEquals(10, records.size)
+        assertEquals(10, records.map { it.id }.toSet().size)
+        assertEquals(10, records.count { it.sourceType == SourceType.MANUAL })
+        assertEquals(5, records.count { it.medicationStatus == MedicationStatus.TAKEN })
+        assertEquals(setOf("sleep", "stress", "activity"), records.flatMap { it.dimensions }.map { it.label }.toSet())
+        assertEquals(10, AnalyticsEngine().calculate(records, BloodPressureDefinitions.analyticsConfig).dataSummary.recordCount)
+    }
+
+    @Test
     fun slotRecordRebuildsForRepeatedSyncSourceUpdateAndDelete() = runBlocking {
         val at = Instant.parse("2026-06-15T06:00:00Z")
         insertHealthEvent("a", "a", at, """{"id":"hc-a","timestamp":${at.toEpochMilli()},"systolic":120.0,"contextOnly":false,"contextTags":[]}""")
@@ -107,22 +139,23 @@ class DataPipelineIntegrationTest {
             """{"id":"manual","timestamp":${at.toEpochMilli()},"systolic":155.0,"note":"edited"}""",
             at, at, 1, null))
         normalizer.processPendingEvents()
-        val manual = repository.getRecords().single()
+        val manual = repository.getRecords().first { it.sourceType == SourceType.MANUAL }
         assertEquals(155.0, manual.measurement("systolic")!!, 0.0)
-        assertEquals(80.0, manual.measurement("diastolic")!!, 0.0)
+        assertEquals(null, manual.measurement("diastolic"))
         assertEquals("edited", manual.note)
 
         // Re-upserting the same provider source is an update, not a duplicate contributor.
         insertHealthEvent("b", "b", at.plusSeconds(60), """{"id":"hc-b","timestamp":${at.plusSeconds(60).toEpochMilli()},"diastolic":85.0,"contextOnly":false,"contextTags":[]}""")
         normalizer.processPendingEvents()
-        assertEquals(155.0, repository.getRecords().single().measurement("systolic")!!, 0.0)
-        assertEquals(85.0, repository.getRecords().single().measurement("diastolic")!!, 0.0)
+        assertEquals(2, repository.getRecords().size)
+        assertEquals(155.0, repository.getRecords().first { it.sourceType == SourceType.MANUAL }.measurement("systolic")!!, 0.0)
+        assertEquals(85.0, repository.getRecords().first { it.sourceType == SourceType.HEALTH_CONNECT }.measurement("diastolic")!!, 0.0)
 
         normalizer.deleteSourceRecord("b")
-        val afterDelete = repository.getRecords().single()
-        assertEquals(155.0, afterDelete.measurement("systolic")!!, 0.0)
-        assertEquals(null, afterDelete.measurement("diastolic"))
-        assertEquals("edited", afterDelete.note)
+        val afterDelete = repository.getRecords()
+        assertEquals(2, afterDelete.size)
+        assertEquals(155.0, afterDelete.first { it.sourceType == SourceType.MANUAL }.measurement("systolic")!!, 0.0)
+        assertEquals(null, afterDelete.first { it.sourceType == SourceType.HEALTH_CONNECT }.measurement("diastolic"))
     }
 
     @Test
@@ -134,6 +167,49 @@ class DataPipelineIntegrationTest {
         insertHealthEvent("glucose", "glucose", at, """{"id":"hc-g","timestamp":${at.toEpochMilli()},"level":5.7,"contextOnly":false,"contextTags":[]}""")
         normalizer.processPendingEvents()
         assertEquals(5.7, repository.getRecords().single().measurement("level")!!, 0.0)
+    }
+
+    @Test
+    fun manualRecordsSurviveDatabaseCloseAndReopen() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databaseName = "persistence-${UUID.randomUUID()}.db"
+        val timestamp = Instant.parse("2026-06-15T06:00:00Z")
+        val first = Room.databaseBuilder(context, MedDatabase::class.java, databaseName)
+            .addMigrations(*com.medmonitoring.core.storage.db.DatabaseMigrations.ALL)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val firstRepository = EventRepositoryImpl(first)
+            val firstNormalizer = NormalizerService(firstRepository, BloodPressureDefinitions.program)
+            firstRepository.insertRawEvent(
+                RawSourceEvent(
+                    id = "persistence-event",
+                    sourceType = SourceType.MANUAL,
+                    payloadJson = """{"id":"persistence-record","timestamp":${timestamp.toEpochMilli()},"measurements":{"systolic":123,"diastolic":81,"pulse":65}}""",
+                    capturedAt = timestamp,
+                    sourceTimestamp = null,
+                    schemaVersion = 1,
+                    error = null
+                )
+            )
+            firstNormalizer.processPendingEvents()
+            assertEquals(1, firstRepository.getRecords().size)
+        } finally {
+            first.close()
+        }
+
+        val reopened = Room.databaseBuilder(context, MedDatabase::class.java, databaseName)
+            .addMigrations(*com.medmonitoring.core.storage.db.DatabaseMigrations.ALL)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val records = EventRepositoryImpl(reopened).getRecords()
+            assertEquals(1, records.size)
+            assertEquals("persistence-record", records.single().id)
+        } finally {
+            reopened.close()
+            context.deleteDatabase(databaseName)
+        }
     }
 
     private suspend fun insertHealthEvent(id: String, payload: String) {

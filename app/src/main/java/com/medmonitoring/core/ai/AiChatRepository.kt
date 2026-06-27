@@ -4,6 +4,7 @@ import com.medmonitoring.core.util.StringProvider
 import com.medmonitoring.app.R
 import com.medmonitoring.core.storage.db.MedDatabase
 import com.medmonitoring.core.analytics.BaseAnalysisResult
+import com.medmonitoring.core.domain.model.UniversalProgramDefinition
 import com.medmonitoring.core.storage.entity.AiChatMessageEntity
 import com.medmonitoring.core.storage.entity.AiProgramStateEntity
 import com.medmonitoring.core.storage.entity.AiReportEntity
@@ -32,8 +33,10 @@ import javax.inject.Singleton
 @Singleton
 class AiChatRepository @Inject constructor(
     private val db: MedDatabase,
-    private val stringProvider: StringProvider
+    private val stringProvider: StringProvider,
+    program: UniversalProgramDefinition
 ) {
+    private val programId = program.programId
     private val analysisStatusTexts by lazy {
         listOf(
             stringProvider.getString(R.string.ai_status_starting_analysis),
@@ -164,7 +167,7 @@ class AiChatRepository @Inject constructor(
         db.aiReportDao().deleteAll()
         db.aiProfileFactDao().deleteAll()
         db.aiProgramStateDao().deleteAll()
-        db.goalDao().deleteForProgram(AiConversationContract.DEFAULT_PROGRAM_ID)
+        db.goalDao().deleteForProgram(programId)
         ensureStorageInitialized()
         addAssistant("status", stringProvider.getString(R.string.ai_status_context_cleared))
     }
@@ -282,7 +285,7 @@ class AiChatRepository @Inject constructor(
     }
 
     suspend fun toggleChecklistItem(id: String) {
-        val goal = db.goalDao().getForProgram(AiConversationContract.DEFAULT_PROGRAM_ID).firstOrNull { it.id == id }
+        val goal = db.goalDao().getForProgram(programId).firstOrNull { it.id == id }
         val nextStatus = if (goal?.status == AiGoalStatus.ACHIEVED) AiGoalStatus.ACCEPTED else AiGoalStatus.ACHIEVED
         setGoalStatus(id, nextStatus)
         refreshProgramStateFromGoals()
@@ -382,7 +385,7 @@ class AiChatRepository @Inject constructor(
 
     private suspend fun currentActionGoals(): List<GoalEntity> {
         return db.goalDao()
-            .getForProgram(AiConversationContract.DEFAULT_PROGRAM_ID)
+            .getForProgram(programId)
             .filter { it.enabled && it.isVisibleActionGoalToday() }
     }
 
@@ -420,7 +423,7 @@ class AiChatRepository @Inject constructor(
         val now = System.currentTimeMillis()
         val goal = GoalEntity(
             id = UUID.randomUUID().toString(),
-            programId = AiConversationContract.DEFAULT_PROGRAM_ID,
+            programId = programId,
             title = title.trim(),
             description = description.trim(),
             targetMetricKey = null,
@@ -540,7 +543,7 @@ class AiChatRepository @Inject constructor(
         val titleKey = recommendation.title.normalizedRecommendationText()
         val descriptionKey = recommendation.description.normalizedRecommendationText()
         return db.goalDao()
-            .getForProgram(AiConversationContract.DEFAULT_PROGRAM_ID)
+            .getForProgram(programId)
             .filter { it.enabled && it.status != AiGoalStatus.REJECTED }
             .any { goal ->
                 goal.sourceRef == recommendation.sourceRef ||

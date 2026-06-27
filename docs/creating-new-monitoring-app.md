@@ -71,11 +71,17 @@ Edit `integrations` in the program definition.
 
 Health Connect mappings are optional and program scoped. Only request Android permissions in `AndroidManifest.xml` for the vertical being shipped.
 
-## 8. Configure AI Wording
+## 8. Configure AI Wording And Runtime
 
 Edit prompt context through program config and localized strings. Keep AI storage, chat, checklist, and worker infrastructure in core.
 
-If using local generation, add a product-specific runtime intentionally. The template does not bundle `llama.cpp` by default.
+The current template bundles the Android `llama.cpp` adapter and builds an arm64-v8a native runtime. Local AI is still optional at runtime: products may keep it disabled, ship a curated model registry, or remove the native runtime intentionally if they do not want local generation.
+
+When keeping local AI:
+- keep model download integrity checks enabled;
+- keep prompts compact enough for phone inference;
+- verify grammar-constrained JSON output;
+- run a device smoke test where AI finishes with either a valid result or safe `Unavailable`.
 
 ## 9. Update Localization
 
@@ -97,6 +103,27 @@ For device validation:
 ```powershell
 .\gradlew.bat installDebug
 ```
+
+Run `connectedDebugAndroidTest` only on a dedicated emulator or test device. That Gradle task may uninstall/clear the target app as part of the test APK lifecycle and must not be used on a device containing user data.
+
+## 11. Configure Permissions Per Vertical
+
+Do not ship every Health Connect permission in the base manifest. Match manifest permissions to the selected program mappings.
+
+Examples:
+- blood pressure: `READ_BLOOD_PRESSURE`, optionally heart rate and selected context permissions;
+- diabetes/glucose: `READ_BLOOD_GLUCOSE`;
+- activity: steps/exercise only;
+- mood: usually no Health Connect permission unless sleep/activity context is part of the product;
+- medication-only: usually no Health Connect permission.
+
+See [health-connect-permissions.md](health-connect-permissions.md).
+
+## 12. Security, Compliance, And Infrastructure Scope
+
+Before release, complete:
+- [security-compliance-scope.md](security-compliance-scope.md)
+- [infrastructure-scope.md](infrastructure-scope.md)
 
 ## Files Normally Edited For A New App
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
@@ -121,11 +122,13 @@ class AiProfileRepository @Inject constructor(
 
     fun observeModels(): Flow<List<AiModelEntity>> = db.aiModelDao().observeModels()
 
-    suspend fun ensureModelRegistrySeeded() {
+    suspend fun ensureModelRegistrySeeded() = withContext(Dispatchers.IO) {
         val now = Instant.now().toEpochMilli()
         val existing = db.aiModelDao().getModels().associateBy { it.id }
+        val store = AiModelFileStore(File(context.filesDir, "ai_models"))
         AiModelRegistry.recommendedModels.forEach { spec ->
             val current = existing[spec.id]
+            val readyFile = (store.prepare(spec) as? AiModelFileState.Ready)?.file
             db.aiModelDao().upsert(
                 AiModelEntity(
                     id = spec.id,
@@ -136,15 +139,15 @@ class AiProfileRepository @Inject constructor(
                     minRamGb = spec.minRamGb,
                     recommendedRamGb = spec.recommendedRamGb,
                     downloadUrl = spec.downloadUrl,
-                    status = current?.status ?: spec.status.name,
-                    localPath = current?.localPath,
-                    updatedAt = current?.updatedAt ?: now
+                    status = if (readyFile != null) AiModelStatus.READY.name else current?.status ?: spec.status.name,
+                    localPath = readyFile?.absolutePath ?: current?.localPath,
+                    updatedAt = if (readyFile != null) now else current?.updatedAt ?: now
                 )
             )
         }
     }
 
-    suspend fun downloadModel(id: String): Result<File> = withContext(Dispatchers.IO) {
+    suspend fun downloadModel(id: String, onProgress: suspend (downloaded: Long, total: Long) -> Unit = { _, _ -> }): Result<File> = withContext(Dispatchers.IO) {
         val spec = AiModelRegistry.specFor(id)
             ?: return@withContext Result.failure(IllegalArgumentException("Unknown AI model: $id"))
         val store = AiModelFileStore(File(context.filesDir, "ai_models"))
@@ -157,7 +160,7 @@ class AiProfileRepository @Inject constructor(
             is AiModelFileState.NeedsDownload -> {
                 db.aiModelDao().updateStatus(id, AiModelStatus.DOWNLOADING.name, null, Instant.now().toEpochMilli())
                 Log.i("AiModelDownload", "Starting download id=$id url=${spec.downloadUrl} target=${state.target.absolutePath}")
-                downloadModelFile(id, spec, state, store)
+                downloadModelFile(id, spec, state, store, onProgress)
             }
         }
     }
@@ -166,30 +169,46 @@ class AiProfileRepository @Inject constructor(
         id: String,
         spec: AiModelSpec,
         state: AiModelFileState.NeedsDownload,
-        store: AiModelFileStore
+        store: AiModelFileStore,
+        onProgress: suspend (downloaded: Long, total: Long) -> Unit
     ): Result<File> {
         return runCatching {
+            val downloadedBefore = state.temp.takeIf { it.exists() }?.length() ?: 0L
             val connection = (URL(spec.downloadUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
                 readTimeout = 60_000
                 instanceFollowRedirects = true
                 requestMethod = "GET"
+                if (downloadedBefore > 0L) setRequestProperty("Range", "bytes=$downloadedBefore-")
             }
             try {
                 Log.i("AiModelDownload", "HTTP ${connection.responseCode} for id=$id")
                 if (connection.responseCode !in 200..299) {
                     error("Hugging Face returned HTTP ${connection.responseCode}")
                 }
+                val append = downloadedBefore > 0L && connection.responseCode == HttpURLConnection.HTTP_PARTIAL
+                if (!append && state.temp.exists()) state.temp.delete()
                 connection.inputStream.use { input ->
-                    state.temp.outputStream().use { output -> input.copyTo(output) }
+                    FileOutputStream(state.temp, append).buffered().use { output ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var downloaded = if (append) downloadedBefore else 0L
+                        onProgress(downloaded, spec.expectedBytes)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            onProgress(downloaded, spec.expectedBytes)
+                        }
+                    }
                 }
-                val target = store.commit(state.temp, state.target)
+                val target = store.commit(spec, state.temp, state.target)
                 db.aiModelDao().updateStatus(id, AiModelStatus.READY.name, target.absolutePath, Instant.now().toEpochMilli())
                 Log.i("AiModelDownload", "Download complete id=$id bytes=${target.length()} path=${target.absolutePath}")
                 target
             } finally {
                 connection.disconnect()
-                if (state.temp.exists()) state.temp.delete()
+                // Keep the partial file. A retry or a new Worker continues with HTTP Range.
             }
         }.onFailure {
             Log.e("AiModelDownload", "Download failed id=$id", it)

@@ -1,7 +1,6 @@
 package com.medmonitoring.core.ai
 
 object AiConversationContract {
-    const val DEFAULT_PROGRAM_ID = "blood-pressure-monitor"
     const val PROFILE_MAIN_GOAL = "main_goal"
     const val PROFILE_AGE = "age"
     const val PROFILE_GENDER = "gender"
