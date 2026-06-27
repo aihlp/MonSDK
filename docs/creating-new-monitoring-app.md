@@ -119,11 +119,13 @@ Examples:
 
 See [health-connect-permissions.md](health-connect-permissions.md).
 
-## 12. Security, Compliance, And Infrastructure Scope
+## 12. Local Data And No-Backend Scope
 
-Before release, complete:
-- [security-compliance-scope.md](security-compliance-scope.md)
-- [infrastructure-scope.md](infrastructure-scope.md)
+Before release, verify:
+- [local-data-scope.md](local-data-scope.md)
+- [no-backend-scope.md](no-backend-scope.md)
+
+The template is intentionally local-only. Do not add server, account, cloud sync, or remote AI requirements to the base template. If a derived app chooses to add a backend later, that is a separate product decision and must not block the local template.
 
 ## Files Normally Edited For A New App
 

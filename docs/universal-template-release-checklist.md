@@ -1,381 +1,165 @@
-# Universal template release checklist
+# Universal local-template release checklist
 
 Reviewed against the current MonSDK working tree on 2026-06-27.
 
-## Current release decision
+## Release decision
 
-Status: **not ready for production publication as a universal template**.
+Status: **not ready for external template handoff yet**.
 
-The reference Android app builds, unit tests pass, and a debug APK can be installed on Pixel 8 without clearing app data when using `adb install -r`. The repository is still not ready to be handed to external teams as a production-ready universal starter because CI/CD is absent, `lintDebug` fails, security/compliance controls are incomplete, and the template matrix still needs more non-blood-pressure fixtures. A diabetes/glucose fixture now covers the first alternate vertical.
+The reason is not missing backend/security infrastructure. MonSDK is intentionally a local Android template. The remaining blockers are template quality blockers: strict lint, full device validation, more fixture coverage, and final proof that the local AI pipeline and Room persistence remain stable.
+
+## Baseline contract
+
+- The template is local-only.
+- Medical records stay on the device in app-private storage.
+- The base template has no server, account system, cloud sync, remote medical analytics, or cloud AI.
+- Health Connect access is device-side and permission-scoped.
+- Local AI is optional and must never block record saving, navigation, analytics, import/export, or reminders.
+- The only intended network operation in the base template is model download from the configured registry, with size and SHA-256 verification.
+
+See:
+
+- [local-data-scope.md](local-data-scope.md)
+- [no-backend-scope.md](no-backend-scope.md)
+- [health-connect-permissions.md](health-connect-permissions.md)
 
 ## Evidence collected
 
-- `.\gradlew.bat compileDebugKotlin testDebugUnitTest --rerun-tasks --console=plain`: passed.
-- `.\gradlew.bat assembleDebug --console=plain`: passed, including arm64 native build.
-- `.\gradlew.bat lintDebug --console=plain`: failed with 300 errors and 136 warnings.
-- `adb install -r app\build\outputs\apk\debug\app-debug.apk`: passed on Pixel 8.
-- Root repository now has `.github/workflows/android-ci.yml` for unit tests, debug APK assembly, and lint report upload. Lint is report-only until translation debt is fixed.
-- No Terraform, CloudFormation, Docker Compose, fastlane, Dependabot/Renovate, SBOM, or vulnerability scanning configuration was found. The no-backend Android scope is documented in `docs/infrastructure-scope.md`.
+- `.\gradlew.bat testDebugUnitTest --console=plain`: passed.
+- `.\gradlew.bat assembleDebug --console=plain`: passed.
+- GitHub Actions Android CI exists and passed for unit tests and debug APK assembly.
+- `lintDebug` is still report-only in CI because translation lint debt remains.
+- A diabetes/glucose fixture exists and validates non-blood-pressure config, Health Connect mapping, analytics, and AI prompt wording.
 
-## Blocking issues before template publication
+## Blocking issues before handoff
 
 | Severity | Area | Issue | Required result |
 | --- | --- | --- | --- |
-| P0 | CI/CD | Root CI exists, but instrumentation tests, strict lint gate, vulnerability scanning, and SBOM are not yet enabled. | Clean clone runs build, unit tests, lint, Android tests, native build, and artifact upload in CI. |
-| P0 | Quality gate | `lintDebug` fails: 300 errors, all `MissingTranslation`, plus 136 warnings. | `lintDebug` passes or a reviewed baseline is committed and CI fails only on new issues. |
-| P0 | Template validation | A diabetes/glucose fixture exists, but the full matrix for mood, activity, medication, and a custom vertical is not complete. | Minimal alternate fixtures pass config, storage, analytics, AI, permissions, and persistence tests. |
-| P0 | Security/compliance | No implemented user authentication/authorization model and no encryption-at-rest layer for Room/DataStore/SharedPreferences. | Security model is documented and implemented or explicitly scoped as local-only with required product-level controls. |
-| P1 | Documentation | README and creation guide now describe bundled `llama.cpp`; remaining docs must stay in sync with runtime changes. | README and guides match the actual AI delivery model. |
-| P1 | Architecture | `core` still imports app shell resources/classes in several areas. | Reusable core is separated from Android app adapters or boundaries are documented and tested. |
-| P1 | Infrastructure | No IaC exists; current Android-only local-first scope is documented in `docs/infrastructure-scope.md`. | Either provide deployment IaC or document that the Android template has no backend infrastructure and list required product-owned services. |
-| P1 | Dependency governance | Many dependencies are outdated according to lint; no automated update/security process found. | Dependency update policy, vulnerability scan, and SBOM are present in CI. |
-| P1 | Android permissions | Reference manifest no longer requests glucose permission; product-specific permission tests are still required for each derived app. | Product-specific manifest permissions are generated or documented and tested per vertical. |
-| P1 | Release hardening | `release` has `minifyEnabled false`; no signing/Play deployment docs. | Release profile, signing instructions, R8 policy, and artifact provenance are documented. |
+| P0 | Local persistence | Manual records must never collapse into one record, and app update reinstall must preserve Room data. | Device test proves 10 unique records survive app restart and `adb install -r`. |
+| P0 | AI pipeline | AI worker must always finish with success, failure, cancellation, or safe `Unavailable`. | Device test proves prompt creation, worker execution, native runtime handling, JSON rendering, and UI completion without process crash or permanent busy state. |
+| P0 | Quality gate | `lintDebug` still has translation errors and CI does not fail on lint. | Fix translations or commit a reviewed lint baseline, then make lint strict in CI. |
+| P0 | Template proof | Diabetes/glucose fixture exists, but mood/activity/medication/custom fixture matrix is incomplete. | Add minimal fixtures proving shared code is not blood-pressure-specific. |
+| P1 | Architecture | Some shared layers still depend on app-shell resources/classes or hidden active-program fallback. | Program identity flows through DI/worker input; reusable core does not depend on a concrete app shell. |
+| P1 | Permissions | Reference manifest must request only permissions required by the selected program. | Permission tests exist per fixture; blood-pressure build does not request glucose permission. |
+| P1 | Documentation | Docs must describe the real local AI runtime and local-only data boundary. | README and guides stay consistent with actual code. |
+| P1 | CI completeness | CI lacks instrumentation tests, strict lint, and device/emulator persistence checks. | CI or documented release script runs the full local-template validation suite. |
 
 ## 1. Code and architecture checklist
 
-### 1.1 Bug and defect readiness
+### 1.1 Data persistence
 
-- [ ] There are no open P0/P1 bugs affecting data persistence, AI worker completion, navigation, background sync, Room migrations, Health Connect import, model download, or report generation.
-- [ ] All P2/P3 known bugs are documented in an issue tracker with:
-  - [ ] severity;
-  - [ ] affected verticals;
-  - [ ] user impact;
-  - [ ] workaround;
-  - [ ] owner;
-  - [ ] target release.
-- [ ] Regression tests exist for all previously confirmed P0 issues:
-  - [ ] ten manual records remain ten unique Room records;
-  - [ ] app reinstall via `adb install -r` preserves database;
-  - [ ] missing Room migration never triggers destructive fallback;
-  - [ ] local AI runtime errors return `Unavailable`, not process abort;
-  - [ ] stale WorkManager rows do not permanently disable AI UI;
-  - [ ] model download resume and integrity checks work.
+- [ ] Manual save returns an explicit success/failure result to UI.
+- [ ] Failed save shows an error and does not clear input.
+- [ ] Ten manual records with different values create ten unique Room records.
+- [ ] History shows ten records after D1.
+- [ ] Analytics input count is ten after D1.
+- [ ] App process restart preserves records.
+- [ ] `adb install -r` update reinstall preserves records.
+- [ ] Full uninstall is documented as destructive.
+- [ ] Room migrations do not use destructive fallback in production paths.
+- [ ] Timestamp/slot logic cannot overwrite manual records from the same time bucket.
 
-Current status: partially complete. Data-regression tests and reinstall preservation were added earlier. Full AI completion with real model still needs controlled end-to-end verification.
+### 1.2 Program modularity
 
-### 1.2 Modular template architecture
+- [ ] New verticals are added through program definitions, not by branching shared screens.
+- [ ] Shared code does not check for `blood-pressure-monitor` to decide behavior.
+- [ ] AI prompt context comes from active program config.
+- [ ] Analytics schema comes from active program config.
+- [ ] Health Connect mappings come from active program config.
+- [ ] Manifest permissions are scoped to the selected app vertical.
+- [ ] Program identity is passed to workers explicitly.
+- [ ] No hidden global active-program fallback is required for background work.
+- [ ] Blood-pressure reference can be replaced by a glucose program without editing core storage, core analytics, or core AI contracts.
 
-- [ ] New verticals are added by replacing or adding `program/*` only:
-  - [ ] `UniversalProgramDefinition`;
-  - [ ] `ProgramUiDefinition`;
-  - [ ] `ProgramAnalyticsSchema`;
-  - [ ] `ProgramRecordMapper`;
-  - [ ] Health Connect mapping;
-  - [ ] prompt context;
-  - [ ] localization keys;
-  - [ ] visuals.
-- [ ] Shared layers do not import concrete program packages:
-  - [ ] `core/domain`;
-  - [ ] `core/storage`;
-  - [ ] `core/normalization`;
-  - [ ] `core/analytics`;
-  - [ ] `core/ai`;
-  - [ ] reusable UI components.
-- [ ] `core` does not depend on `MainActivity`, app resources, app string providers, or app-specific navigation.
-- [ ] Workers receive program identity through DI or worker input, never through a hidden global.
-- [ ] AI persistence uses active `programId`, not `blood-pressure-monitor`.
-- [ ] Database tables that store program-owned data are either program-scoped or documented as singleton product state.
-- [ ] A second fixture program with a different ID and different metrics validates:
-  - [ ] glucose tracking;
-  - [ ] mood tracking;
-  - [ ] activity tracking;
-  - [ ] medication-only tracking;
-  - [ ] no blood-pressure-specific labels, permissions, metrics, AI prompts, or reports.
+### 1.3 Fixture matrix
 
-Current status: improved, but not complete. AI hardcode was removed from core and a diabetes/glucose fixture exists, but full module separation and more vertical fixtures are still missing.
+- [x] Blood-pressure reference program builds.
+- [x] Diabetes/glucose fixture validates:
+  - [x] non-blood-pressure program ID;
+  - [x] glucose metric;
+  - [x] `READ_BLOOD_GLUCOSE` mapping in fixture;
+  - [x] no blood-pressure metric in fixture prompt;
+  - [x] analytics count and dashboard metric generation.
+- [ ] Mood fixture validates score/rating inputs and no Health Connect permission by default.
+- [ ] Activity fixture validates steps/exercise mappings.
+- [ ] Medication-only fixture validates event/status tracking without vital metrics.
+- [ ] Custom fixture validates arbitrary metric IDs and labels.
 
-### 1.3 Code quality, typing, validation
+### 1.4 AI pipeline
 
-- [ ] `compileDebugKotlin` passes in a clean clone.
-- [ ] `testDebugUnitTest` passes in a clean clone.
-- [ ] `lintDebug` passes or has a reviewed baseline with zero new violations.
-- [ ] Public program config objects are validated by config-audit tests.
-- [ ] Input validation covers:
-  - [ ] required metrics;
-  - [ ] numeric ranges;
-  - [ ] timestamps and timezone behavior;
-  - [ ] unknown metric IDs;
-  - [ ] unsupported event statuses;
-  - [ ] malformed import CSV;
-  - [ ] corrupted AI JSON;
-  - [ ] damaged GGUF model files.
-- [ ] Complex code paths have comments explaining invariants:
-  - [ ] normalization merge rules;
-  - [ ] Room migration strategy;
-  - [ ] AI grammar/output contract;
-  - [ ] WorkManager uniqueness/cancellation behavior;
-  - [ ] native llama.cpp batch/context constraints.
-- [ ] Static typing is not bypassed by raw strings except where unavoidable; stringly-typed statuses have tests or typed wrappers.
+- [ ] Prompt builder receives local analytics snapshot only.
+- [ ] Prompt token/context limits are enforced before native call.
+- [ ] Worker is unique per analysis task and replaces stale manual work.
+- [ ] Worker publishes terminal status: success, failure, cancelled, or unavailable.
+- [ ] Native errors are caught and converted to `Unavailable`.
+- [ ] JSON output is validated before persistence.
+- [ ] Invalid JSON is rendered as safe unavailable/error UI.
+- [ ] Missing model does not start generation.
+- [ ] Corrupted model does not crash process.
+- [ ] Cancellation releases busy UI state.
+- [ ] App background/foreground transition does not orphan the worker.
 
-Current status: compile and unit tests pass. Lint fails and must be fixed or baselined.
+### 1.5 Local data boundary
 
-### 1.4 Configuration and hardcoding
+- [ ] No code path uploads medical records.
+- [ ] No prompt or analytics snapshot is sent to a remote AI service.
+- [ ] Model download does not include medical payload.
+- [ ] CSV/report export happens only by explicit user action.
+- [ ] Logs do not intentionally print full medical record payloads in release builds.
+- [ ] Android backup policy is intentionally set for the target product.
 
-- [ ] Application identity is documented and replaceable:
-  - [ ] `applicationId`;
-  - [ ] namespace;
-  - [ ] app name;
-  - [ ] deep-link scheme;
-  - [ ] FileProvider authority;
-  - [ ] launcher icons;
-  - [ ] package rename plan.
-- [ ] Product-specific IDs are not hardcoded in reusable layers:
-  - [ ] program ID;
-  - [ ] premium product IDs;
-  - [ ] Health Connect permissions;
-  - [ ] AI model registry;
-  - [ ] remote endpoints;
-  - [ ] notification channel copy;
-  - [ ] privacy/store copy.
-- [ ] If the product uses environment-specific values, provide `.env.example` or equivalent Android-friendly config examples:
-  - [ ] API base URLs;
-  - [ ] feature flags;
-  - [ ] billing product IDs;
-  - [ ] model registry overrides;
-  - [ ] analytics/crash-reporting DSNs;
-  - [ ] CI signing placeholders.
-- [ ] No secrets are committed.
-- [ ] Debug and release configuration are separated.
+## 2. Build and CI checklist
 
-Current status: no root `.env.example` exists. For Android-only local template this can be acceptable only if docs explicitly say no runtime env file is required and list Gradle/manifest placeholders instead.
-
-## 2. CI/CD and infrastructure checklist
-
-### 2.1 Required CI workflows
-
-- [ ] Root `.github/workflows/ci.yml` exists.
-- [ ] CI runs on pull requests and main branches.
-- [ ] CI uses a clean checkout, not local machine state.
-- [ ] CI installs JDK 17 and Android SDK API 36 or the documented supported versions.
-- [ ] CI caches Gradle safely.
-- [ ] CI runs:
-  - [ ] `./gradlew testDebugUnitTest`;
-  - [ ] `./gradlew lintDebug`;
-  - [ ] `./gradlew assembleDebug`;
-  - [ ] `./gradlew assembleDebugAndroidTest`;
-  - [ ] `./gradlew connectedDebugAndroidTest` on a dedicated emulator/device, never a user-data device;
-  - [ ] native CMake build for all supported ABIs;
-  - [ ] dependency vulnerability scan;
-  - [ ] license/SBOM generation.
-- [ ] CI uploads:
-  - [ ] APK artifacts;
-  - [ ] lint HTML/text reports;
-  - [ ] unit test reports;
-  - [ ] instrumentation test reports;
-  - [ ] logcat/tombstone artifacts for device failures.
-
-Current status: not present.
-
-### 2.2 Branch and release pipeline
-
-- [ ] Branch protection requires green CI.
-- [ ] Release pipeline is documented.
-- [ ] Release signing is configured via secure CI secrets.
-- [ ] Versioning strategy is documented.
-- [ ] Release artifacts are reproducible from a tag.
-- [ ] Debug and release builds use separate application IDs or install channels if needed.
-- [ ] Play Store / internal distribution process is documented if used.
-
-Current status: not present.
-
-### 2.3 Infrastructure as code
-
-- [ ] If the template has backend/cloud dependencies, IaC exists for them:
-  - [ ] Terraform, CloudFormation, Pulumi, or equivalent;
-  - [ ] one-command dev environment deployment;
-  - [ ] staging/prod separation;
-  - [ ] secrets management;
-  - [ ] logging/monitoring;
-  - [ ] teardown instructions.
-- [ ] If no backend is required, docs explicitly state:
-  - [ ] data is local-first;
-  - [ ] Health Connect is device-side;
-  - [ ] local AI model is downloaded from configured model registry;
-  - [ ] any sync/backend/auth layer is product-owned and out of scope.
-
-Current status: no IaC found. This must be either added or explicitly scoped out.
+- [ ] Clean clone builds with documented JDK/SDK/NDK/CMake versions.
+- [ ] `testDebugUnitTest` passes.
+- [ ] `assembleDebug` passes.
+- [ ] `lintDebug` passes or approved baseline is enforced.
+- [ ] `assembleDebugAndroidTest` passes.
+- [ ] `connectedDebugAndroidTest` runs only on dedicated emulator/test device.
+- [ ] CI uploads APK, unit test reports, and lint reports.
+- [ ] CI fails on new compile/test/lint failures after the baseline is cleaned.
+- [ ] Native arm64 build is covered.
 
 ## 3. Documentation and onboarding checklist
 
-### 3.1 README
-
-- [ ] README lists the stack:
-  - [ ] Kotlin;
-  - [ ] Compose;
-  - [ ] Room;
-  - [ ] WorkManager;
-  - [ ] Hilt;
-  - [ ] Health Connect;
-  - [ ] local llama.cpp AI runtime;
-  - [ ] Gradle/AGP/JDK/Android SDK versions.
-- [ ] README has first-run instructions for Windows, macOS/Linux, and Android Studio.
-- [ ] README explains native build prerequisites.
-- [ ] README explains how to install on a device without clearing app data.
-- [ ] README warns that `connectedDebugAndroidTest` must run only on test devices/emulators.
-- [ ] README includes troubleshooting for:
-  - [ ] SDK/NDK/CMake not found;
-  - [ ] Gradle compatibility flags;
-  - [ ] lint translation errors;
-  - [ ] Health Connect permission failures;
-  - [ ] WorkManager foreground service permission issues;
-  - [ ] model download interruption;
-  - [ ] AI unavailable state.
-
-Current status: README is minimal and not enough for external teams.
-
-### 3.2 Customization guide
-
-- [ ] Guide documents how to add a new tracker:
-  - [ ] glucose;
-  - [ ] mood;
-  - [ ] activity;
-  - [ ] medication;
-  - [ ] other disease-specific verticals.
-- [ ] Guide includes step-by-step examples for:
-  - [ ] defining metrics and units;
-  - [ ] defining record form fields;
-  - [ ] defining tags/dimensions;
-  - [ ] adding graph series;
+- [ ] README explains local-only scope.
+- [ ] README explains JDK/Android SDK requirements.
+- [ ] README explains build/test commands.
+- [ ] README links to program creation guide.
+- [ ] Program creation guide explains:
+  - [ ] adding metrics;
+  - [ ] adding form fields;
+  - [ ] adding tags;
   - [ ] adding analytics rules;
+  - [ ] adding graph series;
   - [ ] adding Health Connect mappings;
-  - [ ] changing permissions;
-  - [ ] changing AI prompt context;
-  - [ ] changing localization;
-  - [ ] adding tests.
-- [ ] Guide clearly marks files normally edited and files that must remain untouched.
-- [ ] Guide is consistent with actual local AI runtime packaging.
+  - [ ] scoping manifest permissions;
+  - [ ] changing AI wording;
+  - [ ] adding fixture tests.
+- [ ] Docs state that `llama.cpp` Android adapter is currently bundled.
+- [ ] Docs state local AI is optional.
+- [ ] Docs warn not to run destructive device test flows on a user-data device.
+- [ ] Docs distinguish app update reinstall from full uninstall.
 
-Current status: guide exists but is incomplete and currently stale regarding bundled `llama.cpp`.
+## 4. Final handoff criteria
 
-### 3.3 API, database, and internal service docs
+The template can be handed to another team only when:
 
-- [ ] Room schema is exported and versioned.
-- [ ] Migration policy is documented.
-- [ ] DAO/repository responsibilities are documented.
-- [ ] Ingestion contract is documented:
-  - [ ] raw event shape;
-  - [ ] normalization rules;
-  - [ ] source links;
-  - [ ] manual vs synced records;
-  - [ ] deletion behavior.
-- [ ] Analytics contract is documented:
-  - [ ] metric roles;
-  - [ ] rule types;
-  - [ ] findings;
-  - [ ] dashboard inputs.
-- [ ] AI contract is documented:
-  - [ ] model registry;
-  - [ ] download/resume/integrity;
-  - [ ] prompt limits;
-  - [ ] JSON grammar;
-  - [ ] unavailable/error states;
-  - [ ] worker lifecycle;
-  - [ ] local privacy implications.
-
-Current status: partial docs exist; not enough for handoff without core-team support.
-
-## 4. Security and compliance checklist
-
-### 4.1 Security controls
-
-- [ ] Threat model exists for local health data.
-- [ ] Authentication/authorization model is implemented or explicitly scoped to OS-level device access.
-- [ ] Sensitive data storage is protected:
-  - [ ] Room encryption or documented product decision;
-  - [ ] DataStore/SharedPreferences encryption or documented product decision;
-  - [ ] AI model/output privacy treatment;
-  - [ ] backups disabled or controlled.
-- [ ] Manifest security is reviewed:
-  - [ ] exported activities are intentional;
-  - [ ] deep links are safe;
-  - [ ] receivers are not overexposed;
-  - [ ] FileProvider authority is product-specific;
-  - [ ] unnecessary permissions removed.
-- [ ] Network security config is present if any remote endpoints are used.
-- [ ] Model downloads are integrity checked by size and SHA-256.
-- [ ] Logs do not contain PHI/PII in production builds.
-- [ ] Crash reports, if added by products, are scrubbed.
-
-Current status: backups are disabled and model integrity exists, but auth, encryption-at-rest, log policy, and compliance docs are not complete.
-
-### 4.2 Dependencies and vulnerability management
-
-- [ ] Dependency versions are centralized.
-- [ ] Dependency update automation exists.
-- [ ] Vulnerability scanning runs in CI.
-- [ ] License scanning/SBOM generation exists.
-- [ ] Vendored `llama.cpp` revision is pinned and documented.
-- [ ] Native dependency update process is documented.
-- [ ] All known high/critical vulnerabilities are remediated or risk-accepted.
-
-Current status: no automated vulnerability or license process found. Lint reports multiple outdated dependencies.
-
-### 4.3 Medical data compliance
-
-- [ ] Compliance statement explains what the template does and does not provide.
-- [ ] HIPAA checklist exists for US deployments:
-  - [ ] BAA requirements for cloud vendors;
-  - [ ] access controls;
-  - [ ] audit logs;
-  - [ ] encryption;
-  - [ ] breach handling;
-  - [ ] retention/deletion policy.
-- [ ] GDPR checklist exists for EU/UK deployments:
-  - [ ] lawful basis;
-  - [ ] consent flows;
-  - [ ] data subject rights;
-  - [ ] export/delete;
-  - [ ] data minimization;
-  - [ ] DPIA;
-  - [ ] processor list.
-- [ ] Region-specific requirements are documented for intended markets.
-- [ ] Medical disclaimer and clinical safety boundaries are reviewed by qualified stakeholders.
-- [ ] AI output is clearly non-diagnostic and cannot block core data recording.
-
-Current status: not complete. Existing AI safety prompt is not a compliance program.
-
-## 5. Final transfer criteria
-
-The template can be handed to another team only when all conditions below are met:
-
-- [ ] P0 blockers are closed.
-- [ ] P1 blockers are either closed or explicitly accepted with documented impact and mitigation.
-- [ ] `testDebugUnitTest` passes in clean clone.
-- [ ] `lintDebug` passes or baseline is approved.
-- [ ] `assembleDebug` passes in clean clone.
-- [ ] `assembleDebugAndroidTest` passes in clean clone.
-- [ ] `connectedDebugAndroidTest` passes on a dedicated emulator/device.
-- [ ] Native arm64 build passes.
-- [ ] Pixel 8 smoke test is documented:
-  - [ ] install via `adb install -r`;
-  - [ ] records survive reinstall;
-  - [ ] ten manual records persist and feed analytics;
-  - [ ] history/statistics show correct counts;
-  - [ ] reminder scheduling works;
-  - [ ] import/export works;
-  - [ ] model download/resume works;
-  - [ ] AI analysis finishes with valid result or safe `Unavailable`;
-  - [ ] logcat has no crash/SIGABRT.
-- [ ] A new project was created from the template and validated without changing base infrastructure:
-  - [ ] glucose fixture;
-  - [ ] mood fixture;
-  - [ ] activity fixture;
-  - [ ] medication fixture;
-  - [ ] one custom vertical fixture.
-- [ ] README and guides match the code.
-- [ ] CI/CD is green on protected branches.
-- [ ] Security/compliance checklist is completed for the intended region.
-- [ ] Known deviations are documented in an issue tracker.
+- [ ] all P0 blockers above are closed;
+- [ ] local persistence checks pass on a real device;
+- [ ] AI analysis finishes or returns safe `Unavailable` on a real device;
+- [ ] diabetes/glucose fixture passes;
+- [ ] at least two more non-blood-pressure fixtures pass;
+- [ ] strict CI is green;
+- [ ] documentation matches the local-only architecture;
+- [ ] known deviations are listed with owner and planned fix.
 
 ## Team extension section
 
-Product teams should add their own checks below:
+Derived app teams may add their own product-specific checks below without changing the local-template baseline:
 
-- [ ] Product-specific clinical review completed.
+- [ ] Product-specific clinical wording reviewed.
 - [ ] Product-specific localization reviewed.
 - [ ] Product-specific Health Connect permissions approved.
 - [ ] Product-specific AI model approved.
-- [ ] Product-specific privacy policy approved.
-- [ ] Product-specific release signing configured.
 - [ ] Product-specific store listing reviewed.
