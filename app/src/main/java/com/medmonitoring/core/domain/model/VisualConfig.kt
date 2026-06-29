@@ -13,7 +13,9 @@ data class ProgramVisualConfig(
 data class ThemeConfig(
     val seedColorHex: String,
     val lightColors: StaticColorSchemeConfig,
-    val useDynamicColor: Boolean = true
+    val useDynamicColor: Boolean = true,
+    /** Optional explicit dark color scheme; when null a generated dark scheme is used. */
+    val darkColors: StaticColorSchemeConfig? = null
 )
 
 data class StaticColorSchemeConfig(

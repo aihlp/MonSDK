@@ -80,6 +80,57 @@ class AiBackgroundAnalysisRunner(
         }
     }
 
+    suspend fun runQuestion(question: String): AiBackgroundAnalysisResult {
+        if (expectedProgramId != null && expectedProgramId != programModule.program.programId) {
+            Log.e(TAG, "Program mismatch: expected=$expectedProgramId active=${programModule.program.programId}")
+            return AiBackgroundAnalysisResult.Unavailable(
+                stringProvider.getString(R.string.ai_status_analysis_stopped)
+            )
+        }
+        val db = Room.databaseBuilder(context, MedDatabase::class.java, DATABASE_NAME)
+            .addMigrations(*DatabaseMigrations.ALL)
+            .enableMultiInstanceInvalidation()
+            .build()
+        return try {
+            val chatRepository = AiChatRepository(db, stringProvider, programModule.program)
+            chatRepository.ensureStorageInitialized()
+            AiProfileRepository(context, db).ensureModelRegistrySeeded()
+
+            chatRepository.showAnalysisStatus(stringProvider.getString(R.string.ai_status_analyzing))
+            val baseAnalysis = createBaseAnalysisUseCase(db).run()
+            val aiResult = createAiAnalysisUseCase(db).answerQuestion(question, baseAnalysis)
+            chatRepository.showAiAnalysis(aiResult)
+
+            when (aiResult) {
+                is AiAnalysisResult.Ready -> {
+                    Log.i(TAG, "Background AI question answered")
+                    val settings = db.aiSettingsDao().get() ?: com.medmonitoring.core.storage.entity.AiSettingsEntity()
+                    AiBackgroundAnalysisResult.Ready(
+                        response = aiResult.response,
+                        notifyWhenReady = settings.notifyAnalysisReady
+                    )
+                }
+                is AiAnalysisResult.Unavailable -> {
+                    Log.i(TAG, "Background AI question unavailable: ${aiResult.reason}")
+                    AiBackgroundAnalysisResult.Unavailable(aiResult.reason)
+                }
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Background AI question failed", error)
+            withContext(NonCancellable) {
+                runCatching {
+                    val chatRepository = AiChatRepository(db, stringProvider, programModule.program)
+                    chatRepository.showAiAnalysis(
+                        AiAnalysisResult.Unavailable(stringProvider.getString(R.string.ai_status_analysis_stopped))
+                    )
+                }
+            }
+            AiBackgroundAnalysisResult.Unavailable(stringProvider.getString(R.string.ai_status_analysis_stopped))
+        } finally {
+            db.close()
+        }
+    }
+
     private fun createBaseAnalysisUseCase(db: MedDatabase): BaseAnalysisUseCase {
         val repository = EventRepositoryImpl(db)
         return BaseAnalysisUseCase(

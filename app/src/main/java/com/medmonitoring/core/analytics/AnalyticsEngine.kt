@@ -255,6 +255,50 @@ data class MetricByTagRule(private val metricKey: String, private val tagGroupKe
     }
 }
 
+/**
+ * Compares a metric's average between records where ALL of [tagGroupKeys] are present together and
+ * records where they are not. Generalizes [MetricByTagRule] to a combination of dimensions.
+ */
+data class MetricByTagCombinationRule(
+    private val metricKey: String,
+    private val tagGroupKeys: List<String>
+) : AnalyticsRule {
+    override val id = "${metricKey}_by_${tagGroupKeys.joinToString("_")}"
+
+    override fun evaluate(records: List<UserRecord>, schema: ProgramAnalyticsSchema): List<Finding> {
+        if (records.size < schema.thresholds.minRecordsForFindings) return emptyList()
+        if (tagGroupKeys.size < 2) return emptyList()
+        val metric = schema.metrics.firstOrNull { it.key == metricKey } ?: return emptyList()
+        if (tagGroupKeys.any { key -> schema.tagGroups.none { it.key == key } }) return emptyList()
+        val hasAll = { record: UserRecord ->
+            tagGroupKeys.all { group -> record.dimensions.any { it.group == group } }
+        }
+        val combined = records.filter(hasAll).metricValues(metricKey)
+        val rest = records.filterNot(hasAll).metricValues(metricKey)
+        if (combined.size < schema.thresholds.minGroupSizeForComparison ||
+            rest.size < schema.thresholds.minGroupSizeForComparison
+        ) {
+            return emptyList()
+        }
+        return comparisonFinding(
+            id = id,
+            type = "metric_by_dimension_combination",
+            title = "${metric.label} with ${tagGroupKeys.joinToString(" + ") { it.replace('_', ' ') }}",
+            leftLabel = "Other",
+            rightLabel = "Combined",
+            leftAverage = rest.average(),
+            rightAverage = combined.average(),
+            unit = metric.unit,
+            config = schema,
+            basis = "Based on ${combined.size} combined and ${rest.size} other records.",
+            recordCount = records.size,
+            leftGroupSize = rest.size,
+            rightGroupSize = combined.size,
+            dimensionKey = tagGroupKeys.joinToString("+")
+        )
+    }
+}
+
 data class MetricByActionStatusRule(
     private val metricKey: String,
     private val actionKey: String,

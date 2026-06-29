@@ -24,6 +24,7 @@ import com.medmonitoring.core.analytics.BaseAnalysisUseCase
 import com.medmonitoring.core.analytics.ProgramRecordMapper
 import com.medmonitoring.core.config.ConfigStrictMode
 import com.medmonitoring.core.domain.model.*
+import kotlin.math.roundToInt
 import com.medmonitoring.core.domain.repository.EventRepository
 import com.medmonitoring.core.ingestion.IngestionManager
 import com.medmonitoring.core.ingestion.HealthConnectDataSource
@@ -273,7 +274,13 @@ class MedViewModel @Inject constructor(
                 put("timestamp", state.timestamp.toEpochMilli())
                 put("measurements", buildJsonObject {
                     program.metricComponents.forEach { metric ->
+                        if (metric.computedFrom != null) return@forEach
                         state.metricValues[metric.id]?.let { put(metric.id, it) }
+                    }
+                    // Derived metrics (e.g. BMI) are computed from entered source metrics.
+                    program.metricComponents.forEach { metric ->
+                        val computed = metric.computedFrom ?: return@forEach
+                        computeMetric(computed, state.metricValues)?.let { put(metric.id, it) }
                     }
                 })
                 put("events", buildJsonArray {
@@ -317,6 +324,25 @@ class MedViewModel @Inject constructor(
             }.onFailure { error ->
                 Log.e("RecordSave", "Manual record was not saved", error)
                 onResult(Result.failure(error))
+            }
+        }
+    }
+
+    /** Computes a derived metric (e.g. BMI) from entered source values; null if sources are missing. */
+    private fun computeMetric(
+        definition: ComputedMetricDefinition,
+        values: Map<String, Int>
+    ): Double? = when (definition.formula) {
+        ComputedMetricFormula.BMI -> {
+            val weightKey = definition.sourceMetricIds.getOrNull(0)
+            val heightKey = definition.sourceMetricIds.getOrNull(1)
+            val weightKg = weightKey?.let { values[it] }?.toDouble()
+            val heightCm = heightKey?.let { values[it] }?.toDouble()
+            if (weightKg == null || heightCm == null || heightCm <= 0.0) {
+                null
+            } else {
+                val heightM = heightCm / 100.0
+                (weightKg / (heightM * heightM) * 10).roundToInt() / 10.0
             }
         }
     }

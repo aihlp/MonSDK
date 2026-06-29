@@ -19,6 +19,7 @@ enum class WidgetType {
     TagGroupsWidget,
     NoteWidget,
     SaveButtonWidget,
+    ScaleSliderInputWidget,
     AnalyticsSummaryWidget,
     AnalyticsDetailsWidget,
     HistoryWidget
@@ -105,7 +106,46 @@ data class MetricComponent(
     val defaultValue: Int? = null,
     val isRequired: Boolean = true,
     val labelKey: String? = null,
-    val unitKey: String? = null
+    val unitKey: String? = null,
+    /** When set, this metric is derived from other metrics instead of entered directly. */
+    val computedFrom: ComputedMetricDefinition? = null
+)
+
+enum class ComputedMetricFormula {
+    /** weight(kg) / height(m)^2 — sources are [weight, height]. */
+    BMI
+}
+
+data class ComputedMetricDefinition(
+    val formula: ComputedMetricFormula,
+    val sourceMetricIds: List<String>,
+    /** Per-source input configuration (unit modes/precision) used to canonicalize source values. */
+    val sourceInputConfigs: Map<String, InputBlockConfig> = emptyMap()
+)
+
+/**
+ * A selectable display/entry unit for a metric. Values are stored canonically; [toCanonicalFactor]
+ * converts a display value to the canonical unit (canonical = display * toCanonicalFactor).
+ */
+data class InputUnitMode(
+    val id: String,
+    val label: String,
+    val unit: String,
+    val toCanonicalFactor: Double,
+    val unitKey: String? = null,
+    /** Auto-detection bounds for an entered value expressed in this unit (optional). */
+    val detectionMinInclusive: Double? = null,
+    val detectionMaxInclusive: Double? = null,
+    /** Per-unit entry precision overrides; fall back to the block config when null. */
+    val step: Double? = null,
+    val decimalPlaces: Int? = null
+)
+
+/** Entry precision and optional unit switching for a record input block. */
+data class InputBlockConfig(
+    val step: Double = 1.0,
+    val decimalPlaces: Int = 0,
+    val unitModes: List<InputUnitMode> = emptyList()
 )
 
 data class AutoCollectionConfig(
@@ -125,7 +165,8 @@ data class RecordSlotDefinition(
 enum class MetricInputStyle {
     VerticalWheel,
     HorizontalWheel,
-    NumericField
+    NumericField,
+    ScaleSlider
 }
 
 data class MetricZonePalette(
@@ -253,7 +294,9 @@ data class SaveActionDefinition(
 
 data class RecordBlockDefinition(
     val type: WidgetType,
-    val configId: String = type.name
+    val configId: String = type.name,
+    /** Optional entry precision / unit switching for metric input blocks. */
+    val inputConfig: InputBlockConfig? = null
 )
 
 data class AnalyticsRuleDefinition(
@@ -286,10 +329,22 @@ data class ActionConfig(
     val statuses: List<String>
 )
 
+/** Semantic role of a dimension/tag group, used by analytics and AI context framing. */
+enum class DimensionRole {
+    Helpful,
+    Harmful,
+    Context,
+    Symptom,
+    Medication,
+    Custom,
+    System
+}
+
 data class TagGroupConfig(
     val key: String,
     val label: String,
-    val labelKey: String? = null
+    val labelKey: String? = null,
+    val role: DimensionRole = DimensionRole.Custom
 )
 
 data class AnalyticsThresholds(
@@ -342,6 +397,23 @@ data class ProgramLocalizationConfig(
     val translatableStringKeys: Set<String>,
     val aiPromptLocaleField: String = "locale",
     val analyticsLocaleField: String = "locale"
+)
+
+/** Program-specific system roles that override the default AI prompt roles. */
+data class AiPromptRoleConfig(
+    val periodAnalysisRole: String,
+    val chatRole: String
+)
+
+enum class AiOnboardingAnswerType { Text, Number, YesNo }
+
+/** A profile-setup question asked once and stored as AI patient context. */
+data class AiOnboardingQuestionConfig(
+    val id: String,
+    val question: String,
+    val questionKey: String,
+    val answerType: AiOnboardingAnswerType = AiOnboardingAnswerType.Text,
+    val contextKey: String
 )
 
 data class SensorRule(
@@ -404,7 +476,11 @@ data class UniversalProgramDefinition(
     val integrations: PlatformIntegrationConfig = PlatformIntegrationConfig()
     ,
     val localization: ProgramLocalizationConfig,
-    val premiumConfig: PremiumConfig
+    val premiumConfig: PremiumConfig,
+    /** Optional program-specific AI system roles; falls back to the default roles when null. */
+    val aiPromptRoles: AiPromptRoleConfig? = null,
+    /** Optional profile-setup questions captured once and stored as AI patient context. */
+    val aiOnboardingQuestions: List<AiOnboardingQuestionConfig> = emptyList()
 )
 
 data class ProgramUiDefinition(

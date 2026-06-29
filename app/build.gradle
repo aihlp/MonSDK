@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
@@ -5,6 +7,17 @@ plugins {
     id 'kotlin-parcelize'
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'com.google.dagger.hilt.android'
+}
+
+// Single source of truth for the per-app product flavors (one flavor per monitoring app).
+def programFlavors = new JsonSlurper().parse(file('program-flavors.json'))
+
+// Optional per-flavor release signing. Create keystore.properties (gitignored) from
+// keystore.properties.example to enable signed release artifacts; otherwise release is unsigned.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
 }
 
 android {
@@ -18,6 +31,8 @@ android {
         targetSdk 36
         versionCode 1
         versionName "1.0"
+        // Default active program; each product flavor overrides this.
+        buildConfigField "String", "ACTIVE_PROGRAM", "\"${programFlavors.flavors[0].program}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -25,10 +40,52 @@ android {
         }
     }
 
+    signingConfigs {
+        programFlavors.flavors.each { f ->
+            def storeFileName = keystoreProps["${f.name}.storeFile"]
+            if (storeFileName != null && rootProject.file(storeFileName).exists()) {
+                create(f.name) {
+                    storeFile rootProject.file(storeFileName)
+                    storePassword keystoreProps["${f.name}.storePassword"]
+                    keyAlias keystoreProps["${f.name}.keyAlias"]
+                    keyPassword keystoreProps["${f.name}.keyPassword"]
+                }
+            }
+        }
+    }
+
+    flavorDimensions = [programFlavors.dimension]
+    productFlavors {
+        programFlavors.flavors.each { f ->
+            create(f.name) {
+                dimension programFlavors.dimension
+                applicationId f.applicationId
+                versionCode f.versionCode
+                versionName f.versionName
+                buildConfigField "String", "ACTIVE_PROGRAM", "\"${f.program}\""
+                // Per-flavor release signing applies only when a keystore is configured for it.
+                // The debug build type keeps the shared debug signing config.
+                if (signingConfigs.findByName(f.name) != null) {
+                    signingConfig signingConfigs.getByName(f.name)
+                }
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Universal debug: arm64-v8a for physical devices (Pixel 8), x86_64 for emulators.
+            ndk {
+                abiFilters 'arm64-v8a', 'x86_64'
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // The locally executed models are CPU-oriented; production targets arm64 devices.
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
         }
     }
     compileOptions {
@@ -55,10 +112,6 @@ android {
                 cppFlags '-std=c++17'
                 arguments '-DANDROID_STL=c++_static'
             }
-        }
-        ndk {
-            // The locally executed models are CPU-oriented; Pixel 8 is arm64.
-            abiFilters 'arm64-v8a'
         }
     }
     packagingOptions {

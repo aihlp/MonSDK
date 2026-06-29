@@ -1,5 +1,6 @@
 package com.medmonitoring.core.ai
 
+import com.medmonitoring.core.domain.model.AiOnboardingAnswerType
 import com.medmonitoring.core.domain.model.AnalyticsState
 import com.medmonitoring.core.domain.model.Finding
 import com.medmonitoring.core.domain.model.FindingSeverity
@@ -124,23 +125,53 @@ class AiPromptBuilder @Inject constructor() {
             model = model,
             grammar = grammarFor(task, analytics),
             maxTokens = task.maxTokens,
-            prompt = renderPrompt(task, context, locale)
+            prompt = renderPrompt(task, program, context, goals, locale)
         )
     }
 
     private fun renderPrompt(
         task: AiPromptTaskConfig,
+        program: UniversalProgramDefinition,
         context: String,
+        goals: List<GoalEntity>,
         locale: Locale
     ): String = buildString {
-        appendLine(task.role)
+        appendLine(roleFor(task, program))
         appendLine(AiPromptConfig.jsonOnly)
         appendLine(languageInstruction(locale))
         appendLine(task.outputContract)
         appendLine(AiPromptConfig.medicalSafetyPolicy)
         task.instructions.forEach { appendLine(it) }
+        goalLifecycleText(goals).takeIf { it.isNotBlank() }?.let { appendLine(it) }
         appendLine("Prompt variables:")
         append(context)
+    }
+
+    /** Program-specific AI role override, falling back to the task's default role. */
+    private fun roleFor(task: AiPromptTaskConfig, program: UniversalProgramDefinition): String {
+        val roles = program.aiPromptRoles ?: return task.role
+        return when (task.taskId) {
+            AiPromptTaskId.PERIOD_ANALYSIS -> roles.periodAnalysisRole
+            AiPromptTaskId.CHAT_MESSAGE -> roles.chatRole
+            else -> task.role
+        }
+    }
+
+    /** Plain-text goal lifecycle the model must respect; rejected/deleted goals must not be repeated. */
+    private fun goalLifecycleText(goals: List<GoalEntity>): String {
+        if (goals.isEmpty()) return ""
+        val active = goals.filter { it.enabled && it.status in ACTIVE_GOAL_STATUSES }
+        val achieved = goals.filter { it.status == AiGoalStatus.ACHIEVED }
+        val rejected = goals.filter { it.status == AiGoalStatus.REJECTED || it.status == AiGoalStatus.DELETED }
+        return buildString {
+            appendLine("Goal lifecycle:")
+            if (active.isNotEmpty()) appendLine("active: ${active.joinToString("; ") { it.title.take(MAX_GOAL_TITLE_LENGTH) }}")
+            if (achieved.isNotEmpty()) appendLine("achieved: ${achieved.joinToString("; ") { it.title.take(MAX_GOAL_TITLE_LENGTH) }}")
+            if (rejected.isNotEmpty()) {
+                appendLine("rejected: ${rejected.joinToString("; ") { it.title.take(MAX_GOAL_TITLE_LENGTH) }}")
+                append("Do not repeat rejected recommendations.")
+            }
+        }.trim()
     }
 
     private fun buildPromptContext(
@@ -157,7 +188,7 @@ class AiPromptBuilder @Inject constructor() {
     ) = buildJsonObject {
         put(program.localization.aiPromptLocaleField, locale.toLanguageTag())
         if ("patientContext" in task.variables) {
-            put("patientContext", patientContext(anamnesis, profileFacts))
+            put("patientContext", patientContext(program, anamnesis, profileFacts))
         }
         if ("goalContext" in task.variables) {
             put("goalContext", goalContext(goals, checklist))
@@ -194,6 +225,7 @@ class AiPromptBuilder @Inject constructor() {
     }.toString()
 
     private fun patientContext(
+        program: UniversalProgramDefinition,
         anamnesis: String,
         facts: List<AiProfileFactEntity>
     ) = buildJsonObject {
@@ -203,6 +235,23 @@ class AiPromptBuilder @Inject constructor() {
         val values = facts
             .filter { it.value.isNotBlank() }
             .associate { it.key to it.value.trim().take(MAX_PATIENT_FIELD_LENGTH) }
+        // Program-driven mapping: each onboarding question stores its answer under its contextKey.
+        val onboarding = program.aiOnboardingQuestions
+        if (onboarding.isNotEmpty()) {
+            onboarding.forEach { question ->
+                val value = values[question.id] ?: return@forEach
+                when (question.answerType) {
+                    AiOnboardingAnswerType.YesNo -> when (value.normalizedAnswer()) {
+                        "yes" -> put(question.contextKey, true)
+                        "no" -> put(question.contextKey, false)
+                        else -> put(question.contextKey, value)
+                    }
+                    else -> put(question.contextKey, value)
+                }
+            }
+            return@buildJsonObject
+        }
+        // Legacy hardcoded mapping for programs without onboarding questions (e.g. blood pressure).
         values[AiConversationContract.PROFILE_MAIN_GOAL]?.let { put("goal", it) }
         values[AiConversationContract.PROFILE_AGE]?.let { put("age", it) }
         values[AiConversationContract.PROFILE_GENDER]?.let { put("sex", it) }

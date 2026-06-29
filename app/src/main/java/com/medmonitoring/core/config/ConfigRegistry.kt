@@ -10,6 +10,7 @@ object ConfigRegistry {
         WidgetType.EventAmountWidget,
         WidgetType.PairedVerticalWheelInputWidget,
         WidgetType.SingleHorizontalWheelInputWidget,
+        WidgetType.ScaleSliderInputWidget,
         WidgetType.TagGroupsWidget,
         WidgetType.NoteWidget,
         WidgetType.SaveButtonWidget
@@ -31,6 +32,7 @@ object ConfigRegistry {
         WidgetType.EventAmountWidget,
         WidgetType.PairedVerticalWheelInputWidget,
         WidgetType.SingleHorizontalWheelInputWidget,
+        WidgetType.ScaleSliderInputWidget,
         WidgetType.TagGroupsWidget,
         WidgetType.NoteWidget
     )

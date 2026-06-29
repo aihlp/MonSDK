@@ -10,6 +10,12 @@ build/
 .idea/
 local.properties
 
+# Release signing secrets (never commit)
+keystore.properties
+keystores/
+*.jks
+*.keystore
+
 # Temporary recovery and diagnostic artifacts
 .artifacts/
 .recovery/

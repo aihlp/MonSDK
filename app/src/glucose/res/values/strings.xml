@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Per-flavor launcher/app name. Add values-<locale>/strings.xml here for localized names. -->
+    <string name="app_name">Glucose Monitor</string>
+</resources>

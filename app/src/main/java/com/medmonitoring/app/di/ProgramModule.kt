@@ -9,7 +9,7 @@ import com.medmonitoring.core.domain.model.ProgramUiDefinition
 import com.medmonitoring.core.domain.model.UniversalProgramDefinition
 import com.medmonitoring.core.domain.model.UserRecord
 import com.medmonitoring.core.program.ProgramModuleDefinition
-import com.medmonitoring.program.bloodpressure.BloodPressureProgramModule
+import com.medmonitoring.app.ProgramCatalog
 import com.medmonitoring.core.util.StringProvider
 import dagger.Binds
 import dagger.Module
@@ -29,7 +29,7 @@ abstract class ProgramModule {
         @Provides
         @Singleton
         fun provideProgramModuleDefinition(): ProgramModuleDefinition =
-            BloodPressureProgramModule
+            ProgramCatalog.active
 
         @Provides
         @Singleton

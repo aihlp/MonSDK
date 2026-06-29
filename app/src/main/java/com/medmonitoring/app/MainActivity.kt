@@ -20,6 +20,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
@@ -207,7 +208,7 @@ private fun MonitoringApp(
                             }
                         }
                         Text(
-                            text = stringResource(R.string.app_name),
+                            text = viewModel.program.localizedDisplayName(),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -428,6 +429,11 @@ internal fun ProgramRecordForm(
                     onMetricChange
                 )
                 WidgetType.SingleHorizontalWheelInputWidget -> SingleHorizontalWheelInputBlock(
+                    state,
+                    program.metricComponents.forBlock(block),
+                    onMetricChange
+                )
+                WidgetType.ScaleSliderInputWidget -> ScaleSliderInputBlock(
                     state,
                     program.metricComponents.forBlock(block),
                     onMetricChange
@@ -715,6 +721,54 @@ private fun List<MetricComponent>.forBlock(block: RecordBlockDefinition): List<M
         .map { it.trim() }
         .filter { it.isNotBlank() && it != block.type.name }
     return ids.mapNotNull { id -> firstOrNull { it.id == id } }
+}
+
+@Composable
+internal fun ScaleSliderInputBlock(
+    state: RecordInputState,
+    components: List<MetricComponent>,
+    onChange: (String, Int) -> Unit
+) {
+    val metric = components.firstOrNull() ?: return
+    val range = metric.inputRange
+    val current = (state.metricValue(metric.id) ?: metric.defaultValue ?: range.first).coerceIn(range)
+    val status = metric.metricStatus(current)
+    val accent = status.accent()
+    val steps = (range.last - range.first - 1).coerceAtLeast(0)
+    MeasurementSection(metric.localizedLabel(), status) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)
+        ) {
+            Text(
+                current.toString(),
+                color = accent,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.widthIn(min = 48.dp),
+                textAlign = TextAlign.Center
+            )
+            Slider(
+                value = current.toFloat(),
+                onValueChange = { onChange(metric.id, it.roundToInt().coerceIn(range)) },
+                valueRange = range.first.toFloat()..range.last.toFloat(),
+                steps = steps,
+                colors = SliderDefaults.colors(
+                    thumbColor = accent,
+                    activeTrackColor = accent,
+                    activeTickColor = accent.copy(alpha = 0.4f),
+                    inactiveTickColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${range.last}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
 }
 
 private enum class MetricStatus { Normal, Caution, Danger }

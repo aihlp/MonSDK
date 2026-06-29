@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.medmonitoring.core.domain.model.ProgramVisualConfig
+import com.medmonitoring.core.domain.model.StaticColorSchemeConfig
 
 val LocalProgramVisuals = staticCompositionLocalOf<ProgramVisualConfig> {
     error("ProgramVisualConfig is not provided")
@@ -33,27 +34,15 @@ fun ProgramTheme(
     val context = LocalContext.current
     val darkTheme = isSystemInDarkTheme()
     val colors = visualConfig.theme.lightColors
+    val darkColors = visualConfig.theme.darkColors
     val baseColorScheme = when {
         visualConfig.theme.useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme ->
             dynamicDarkColorScheme(context)
         visualConfig.theme.useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             dynamicLightColorScheme(context)
+        darkTheme && darkColors != null -> darkColors.toDarkColorScheme()
         darkTheme -> darkColorScheme(primary = colors.primary.toColor())
-        else -> lightColorScheme(
-            primary = colors.primary.toColor(),
-            onPrimary = colors.onPrimary.toColor(),
-            primaryContainer = colors.primaryContainer.toColor(),
-            secondary = colors.secondary.toColor(),
-            onSecondary = colors.onSecondary.toColor(),
-            surface = colors.surface.toColor(),
-            surfaceVariant = colors.surfaceVariant.toColor(),
-            onSurface = colors.onSurface.toColor(),
-            onSurfaceVariant = colors.onSurfaceVariant.toColor(),
-            outline = colors.outline.toColor(),
-            outlineVariant = colors.outlineVariant.toColor(),
-            error = colors.error.toColor(),
-            onError = colors.onError.toColor()
-        )
+        else -> colors.toLightColorScheme()
     }
     val colorScheme = baseColorScheme.copy(
         background = baseColorScheme.background,
@@ -105,6 +94,38 @@ fun ProgramTheme(
         )
     }
 }
+
+private fun StaticColorSchemeConfig.toLightColorScheme() = lightColorScheme(
+    primary = primary.toColor(),
+    onPrimary = onPrimary.toColor(),
+    primaryContainer = primaryContainer.toColor(),
+    secondary = secondary.toColor(),
+    onSecondary = onSecondary.toColor(),
+    surface = surface.toColor(),
+    surfaceVariant = surfaceVariant.toColor(),
+    onSurface = onSurface.toColor(),
+    onSurfaceVariant = onSurfaceVariant.toColor(),
+    outline = outline.toColor(),
+    outlineVariant = outlineVariant.toColor(),
+    error = error.toColor(),
+    onError = onError.toColor()
+)
+
+private fun StaticColorSchemeConfig.toDarkColorScheme() = darkColorScheme(
+    primary = primary.toColor(),
+    onPrimary = onPrimary.toColor(),
+    primaryContainer = primaryContainer.toColor(),
+    secondary = secondary.toColor(),
+    onSecondary = onSecondary.toColor(),
+    surface = surface.toColor(),
+    surfaceVariant = surfaceVariant.toColor(),
+    onSurface = onSurface.toColor(),
+    onSurfaceVariant = onSurfaceVariant.toColor(),
+    outline = outline.toColor(),
+    outlineVariant = outlineVariant.toColor(),
+    error = error.toColor(),
+    onError = onError.toColor()
+)
 
 fun String.toColor(): Color {
     val hex = removePrefix("#")

@@ -1,0 +1,30 @@
+{
+  "_comment": "Single source of truth for per-app product flavors. build.gradle generates one productFlavor per entry. Add a new monitoring app by adding an entry here and a src/<flavor>/res app_name + the program module on the classpath.",
+  "dimension": "program",
+  "flavors": [
+    {
+      "name": "bloodpressure",
+      "applicationId": "com.medmonitoring.bloodpressure",
+      "program": "blood-pressure-monitor",
+      "appName": "BP Monitor",
+      "versionCode": 1,
+      "versionName": "1.0"
+    },
+    {
+      "name": "glucose",
+      "applicationId": "com.medmonitoring.glucose",
+      "program": "diabetes-glucose-monitor",
+      "appName": "Glucose Monitor",
+      "versionCode": 1,
+      "versionName": "1.0"
+    },
+    {
+      "name": "mood",
+      "applicationId": "com.medmonitoring.mood",
+      "program": "mood-energy-monitor",
+      "appName": "Mood Monitor",
+      "versionCode": 1,
+      "versionName": "1.0"
+    }
+  ]
+}
