@@ -20,10 +20,12 @@ import com.medmonitoring.core.ai.AiProfileRepository
 import com.medmonitoring.core.ai.AiModelDownloadWorker
 import com.medmonitoring.core.ai.AiSettingsContract
 import com.medmonitoring.core.analytics.AnalyticsEngine
+import com.medmonitoring.core.analytics.AnalyticsUnitFormatter
 import com.medmonitoring.core.analytics.BaseAnalysisUseCase
 import com.medmonitoring.core.analytics.ProgramRecordMapper
 import com.medmonitoring.core.config.ConfigStrictMode
 import com.medmonitoring.core.domain.model.*
+import com.medmonitoring.core.units.UnitPreferenceStore
 import kotlin.math.roundToInt
 import com.medmonitoring.core.domain.repository.EventRepository
 import com.medmonitoring.core.ingestion.IngestionManager
@@ -59,10 +61,11 @@ data class RecordInputState(
     val eventTexts: Map<String, String> = emptyMap(),
     val medicationStatus: MedicationStatus = MedicationStatus.NOT_RECORDED,
     val medicationFullText: String = "",
-    val metricValues: Map<String, Int> = emptyMap(),
+    /** Canonical (unit-independent) metric values; display conversion happens at render time. */
+    val metricValues: Map<String, Double> = emptyMap(),
     val note: String = "",
 ) {
-    fun metricValue(metricId: String): Int? = metricValues[metricId]
+    fun metricValue(metricId: String): Double? = metricValues[metricId]
     fun eventStatus(eventKey: String): String? = eventStatuses[eventKey]
     fun eventText(eventKey: String): String = eventTexts[eventKey].orEmpty()
 }
@@ -86,6 +89,7 @@ class MedViewModel @Inject constructor(
     val program: UniversalProgramDefinition,
     val uiDefinition: ProgramUiDefinition,
     private val analyticsSchema: AnalyticsConfig,
+    val unitPreferences: UnitPreferenceStore,
     @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
     private val aiPrefs: SharedPreferences = appContext.getSharedPreferences("ai_chat_ui", Context.MODE_PRIVATE)
@@ -101,7 +105,7 @@ class MedViewModel @Inject constructor(
                 input.key to input.defaultText()
             },
             metricValues = program.metricComponents.mapNotNull { metric ->
-                metric.defaultValue?.let { metric.id to it }
+                metric.defaultValue?.let { metric.id to it.toDouble() }
             }.toMap()
         )
     )
@@ -120,7 +124,7 @@ class MedViewModel @Inject constructor(
             repository.getLastInput()?.let { (med, values) ->
                 input.value = input.value.copy(
                     eventTexts = input.value.eventTexts.mapValues { (_, text) -> med.ifBlank { text } },
-                    metricValues = input.value.metricValues + values
+                    metricValues = input.value.metricValues + values.mapValues { it.value.toDouble() }
                 )
             }
         }
@@ -187,11 +191,13 @@ class MedViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val analytics = records.map { current ->
-        analyticsEngine.calculate(
+    val analytics = combine(records, unitPreferences.state) { current, prefs ->
+        val raw = analyticsEngine.calculate(
             recordMapper.mapAll(current.orEmpty()),
             analyticsSchema
         )
+        // Re-render dashboard metrics and findings in the user's selected units.
+        AnalyticsUnitFormatter.apply(raw, program, uiDefinition, prefs)
     }
         .stateIn(viewModelScope, SharingStarted.Lazily, analyticsEngine.calculate(emptyList(), analyticsSchema))
 
@@ -211,7 +217,7 @@ class MedViewModel @Inject constructor(
         viewModelScope.launch {
             repository.saveLastInput(
                 state.eventTexts.values.firstOrNull().orEmpty(),
-                state.metricValues
+                state.metricValues.mapValues { it.value.roundToInt() }
             )
         }
     }
@@ -225,9 +231,14 @@ class MedViewModel @Inject constructor(
         persistInput()
     }
 
-    fun setMetricValue(metricId: String, value: Int) {
+    fun setMetricValue(metricId: String, value: Double) {
         input.value = input.value.copy(metricValues = input.value.metricValues + (metricId to value))
         persistInput()
+    }
+
+    /** Switches the global display unit for a metric. All blocks observe this and re-render. */
+    fun selectUnit(metricId: String, unitModeId: String) {
+        unitPreferences.selectUnit(metricId, unitModeId)
     }
 
     fun setNote(note: String) {
@@ -280,7 +291,7 @@ class MedViewModel @Inject constructor(
                     // Derived metrics (e.g. BMI) are computed from entered source metrics.
                     program.metricComponents.forEach { metric ->
                         val computed = metric.computedFrom ?: return@forEach
-                        computeMetric(computed, state.metricValues)?.let { put(metric.id, it) }
+                        ComputedMetricCalculator.compute(computed, state.metricValues)?.let { put(metric.id, it) }
                     }
                 })
                 put("events", buildJsonArray {
@@ -324,25 +335,6 @@ class MedViewModel @Inject constructor(
             }.onFailure { error ->
                 Log.e("RecordSave", "Manual record was not saved", error)
                 onResult(Result.failure(error))
-            }
-        }
-    }
-
-    /** Computes a derived metric (e.g. BMI) from entered source values; null if sources are missing. */
-    private fun computeMetric(
-        definition: ComputedMetricDefinition,
-        values: Map<String, Int>
-    ): Double? = when (definition.formula) {
-        ComputedMetricFormula.BMI -> {
-            val weightKey = definition.sourceMetricIds.getOrNull(0)
-            val heightKey = definition.sourceMetricIds.getOrNull(1)
-            val weightKg = weightKey?.let { values[it] }?.toDouble()
-            val heightCm = heightKey?.let { values[it] }?.toDouble()
-            if (weightKg == null || heightCm == null || heightCm <= 0.0) {
-                null
-            } else {
-                val heightM = heightCm / 100.0
-                (weightKg / (heightM * heightM) * 10).roundToInt() / 10.0
             }
         }
     }

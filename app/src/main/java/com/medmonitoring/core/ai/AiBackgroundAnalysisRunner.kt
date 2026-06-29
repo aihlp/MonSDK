@@ -12,6 +12,7 @@ import com.medmonitoring.core.program.ProgramModuleDefinition
 import com.medmonitoring.core.storage.db.DatabaseMigrations
 import com.medmonitoring.core.storage.db.MedDatabase
 import com.medmonitoring.core.storage.repository.EventRepositoryImpl
+import com.medmonitoring.core.units.UnitPreferenceStore
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -153,7 +154,9 @@ class AiBackgroundAnalysisRunner(
             analyticsSchema = programModule.analytics,
             promptBuilder = AiPromptBuilder(),
             aiEngine = LlamaCppAiEngine(context),
-            stringProvider = stringProvider
+            stringProvider = stringProvider,
+            ui = programModule.ui,
+            unitPreferences = UnitPreferenceStore(context.applicationContext, programModule.program, programModule.ui)
         )
     }
 

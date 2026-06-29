@@ -3,7 +3,10 @@ package com.medmonitoring.core.ai
 import android.util.Log
 import com.medmonitoring.core.analytics.BaseAnalysisResult
 import com.medmonitoring.core.analytics.AnalyticsEngine
+import com.medmonitoring.core.analytics.AnalyticsUnitFormatter
 import com.medmonitoring.core.analytics.ProgramRecordMapper
+import com.medmonitoring.core.domain.model.ProgramUiDefinition
+import com.medmonitoring.core.units.UnitPreferenceStore
 import com.medmonitoring.core.domain.model.ProgramAnalyticsSchema
 import com.medmonitoring.core.domain.model.UniversalProgramDefinition
 import com.medmonitoring.core.domain.model.FindingSeverity
@@ -38,7 +41,9 @@ class AiAnalysisUseCase @Inject constructor(
     private val analyticsSchema: ProgramAnalyticsSchema,
     private val promptBuilder: AiPromptBuilder,
     private val aiEngine: AiEngine,
-    private val stringProvider: StringProvider
+    private val stringProvider: StringProvider,
+    private val ui: ProgramUiDefinition,
+    private val unitPreferences: UnitPreferenceStore
 ) {
     suspend fun run(baseAnalysis: BaseAnalysisResult): AiAnalysisResult {
         Log.i("AiAnalysis", "Requested AI analysis records=${baseAnalysis.recordCount}")
@@ -75,7 +80,10 @@ class AiAnalysisUseCase @Inject constructor(
             )
         }
         val records = repository.getRecords()
-        val analytics = analyticsEngine.calculate(recordMapper.mapAll(records), analyticsSchema)
+        val analytics = AnalyticsUnitFormatter.apply(
+            analyticsEngine.calculate(recordMapper.mapAll(records), analyticsSchema),
+            program, ui, unitPreferences.current()
+        )
         val currentChecklist = db.aiProgramStateDao().getToday()
             ?.checklistJson
             ?.let(AiJsonCodec::checklistFromJson)
@@ -138,7 +146,10 @@ class AiAnalysisUseCase @Inject constructor(
                 stringProvider.getString(R.string.ai_model_not_in_registry, readyModel.displayName)
             )
         val records = repository.getRecords()
-        val analytics = analyticsEngine.calculate(recordMapper.mapAll(records), analyticsSchema)
+        val analytics = AnalyticsUnitFormatter.apply(
+            analyticsEngine.calculate(recordMapper.mapAll(records), analyticsSchema),
+            program, ui, unitPreferences.current()
+        )
         val currentChecklist = db.aiProgramStateDao().getToday()
             ?.checklistJson
             ?.let(AiJsonCodec::checklistFromJson)

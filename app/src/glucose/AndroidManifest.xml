@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Health Connect permissions scoped to the glucose program. The base (BP reference) manifest is
+      merged in; here we add glucose's primary metric permission and drop permissions this program
+      never reads. Blood pressure is kept on purpose: it is read as a CONTEXT signal for sugar
+      patients (transformed into a "High BP" tag by the program tag matrix).
+    -->
+    <uses-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE" />
+
+    <!-- Glucose program does not track heart rate. -->
+    <uses-permission
+        android:name="android.permission.health.READ_HEART_RATE"
+        tools:node="remove" />
+</manifest>

@@ -1,5 +1,6 @@
-package com.medmonitoring.app
+package com.medmonitoring.app.di
 
+import com.medmonitoring.app.BuildConfig
 import com.medmonitoring.core.program.ProgramModuleDefinition
 import com.medmonitoring.program.bloodpressure.BloodPressureProgramModule
 import com.medmonitoring.program.diabetes.DiabetesProgramModule
@@ -9,8 +10,10 @@ import com.medmonitoring.program.mood.MoodProgramModule
  * Registry of all program modules shipped in this template. The active program for a build is
  * selected by [BuildConfig.ACTIVE_PROGRAM], which each product flavor sets to a program id.
  *
- * To add a new monitoring app: implement a [ProgramModuleDefinition], register it here, and add a
- * matching flavor entry in app/program-flavors.json.
+ * This lives in the DI layer on purpose: it is the one place (besides MedApplication) allowed to
+ * reference concrete program modules. To add a new monitoring app: implement a
+ * [ProgramModuleDefinition], register it here, and add a matching flavor entry in
+ * app/program-flavors.json.
  */
 object ProgramCatalog {
     val all: List<ProgramModuleDefinition> = listOf(

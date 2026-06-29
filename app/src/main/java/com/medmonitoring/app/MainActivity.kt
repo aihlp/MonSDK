@@ -20,6 +20,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -309,6 +310,8 @@ private fun RecordScreen(viewModel: MedViewModel) {
     val records by viewModel.records.collectAsState()
     val collectionState by viewModel.collectionSettings.state.collectAsState()
     val customTags by viewModel.customTags.collectAsState()
+    val unitPreferences by viewModel.unitPreferences.state.collectAsState()
+    val unitContext = UnitContext(viewModel.program, viewModel.uiDefinition, unitPreferences, viewModel::selectUnit)
     val state = viewModel.input.value
     val context = LocalContext.current
     val recordSavedMessage = stringResource(R.string.record_saved)
@@ -332,7 +335,7 @@ private fun RecordScreen(viewModel: MedViewModel) {
                             }
                         }
                     },
-                    text = { Text(state.saveLabel(viewModel.program.saveActionDefinition)) },
+                    text = { Text(state.saveLabel(viewModel.program.saveActionDefinition, unitContext)) },
                     icon = {}
                 )
             }
@@ -358,6 +361,8 @@ private fun RecordScreen(viewModel: MedViewModel) {
             onSetOtherInput = viewModel::setOtherInput,
             onConfirmOtherTag = viewModel::confirmOtherTag,
             onNoteChange = viewModel::setNote,
+            unitPreferences = viewModel.unitPreferences.state.collectAsState().value,
+            onSelectUnit = viewModel::selectUnit,
             includeGraph = true,
             bottomSpacer = 96.dp
         )
@@ -377,11 +382,13 @@ internal fun ProgramRecordForm(
     onTimestampChange: (Instant) -> Unit,
     onEventStatusChange: (String, String) -> Unit,
     onEventTextChange: (String, String) -> Unit,
-    onMetricChange: (String, Int) -> Unit,
+    onMetricChange: (String, Double) -> Unit,
     onToggleTag: (String, String) -> Unit,
     onSetOtherInput: (String, String) -> Unit,
     onConfirmOtherTag: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    unitPreferences: Map<String, String> = emptyMap(),
+    onSelectUnit: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     records: List<UserRecord>? = null,
     showGraphEmptyState: Boolean = false,
@@ -413,7 +420,10 @@ internal fun ProgramRecordForm(
                     GraphWidget(
                         records = records,
                         definition = program.graphDefinition,
-                        showEmptyState = showGraphEmptyState
+                        showEmptyState = showGraphEmptyState,
+                        program = program,
+                        ui = uiDefinition,
+                        unitPreferences = unitPreferences
                     )
                 }
                 WidgetType.DateTimeWidget -> PaddedRecordBlock {
@@ -426,17 +436,27 @@ internal fun ProgramRecordForm(
                 WidgetType.PairedVerticalWheelInputWidget -> PairedVerticalWheelInputBlock(
                     state,
                     program.metricComponents.forBlock(block),
-                    onMetricChange
+                    onMetricChange,
+                    UnitContext(program, uiDefinition, unitPreferences, onSelectUnit)
                 )
                 WidgetType.SingleHorizontalWheelInputWidget -> SingleHorizontalWheelInputBlock(
                     state,
                     program.metricComponents.forBlock(block),
-                    onMetricChange
+                    onMetricChange,
+                    UnitContext(program, uiDefinition, unitPreferences, onSelectUnit)
                 )
                 WidgetType.ScaleSliderInputWidget -> ScaleSliderInputBlock(
                     state,
                     program.metricComponents.forBlock(block),
-                    onMetricChange
+                    onMetricChange,
+                    UnitContext(program, uiDefinition, unitPreferences, onSelectUnit)
+                )
+                WidgetType.ComputedMetricInputWidget -> ComputedMetricInputBlock(
+                    state,
+                    program.metricComponents,
+                    block.configId,
+                    onMetricChange,
+                    UnitContext(program, uiDefinition, unitPreferences, onSelectUnit)
                 )
                 WidgetType.TagGroupsWidget -> PaddedRecordBlock {
                     TagGroupsBlock(program.tagGroups, selectedTags, otherInputs, customTags, onToggleTag, onSetOtherInput, onConfirmOtherTag)
@@ -455,16 +475,25 @@ private fun PaddedRecordBlock(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun RecordInputState.saveLabel(definition: SaveActionDefinition): String {
+private fun RecordInputState.saveLabel(definition: SaveActionDefinition, units: UnitContext): String {
     val action = stringResource(R.string.save)
     if (metricValues.isEmpty()) {
         return definition.fallbackText
             .replace("{action}", action)
             .replace("SAVE", action)
     }
-    return metricValues.entries.fold(definition.previewPattern) { text, (metricId, value) ->
-        text.replace("{$metricId}", value.toString())
+    // Render values and units from the global unit state — never hardcode units in the pattern.
+    // Patterns use {metricId} for the display value and {unit:metricId} for the selected unit label.
+    var text = definition.previewPattern
+    units.program.metricComponents.forEach { metric ->
+        val canonical = metricValues[metric.id]
+        val display = units.display(metric, canonical ?: 0.0)
+        text = text.replace("{unit:${metric.id}}", display.unit)
+        if (canonical != null) {
+            text = text.replace("{${metric.id}}", units.display(metric, canonical).valueText)
+        }
     }
+    return text
         .replace("{action}", action)
         .replace("SAVE", action)
 }
@@ -666,33 +695,80 @@ private fun List<EventInputDefinition>.forBlock(block: RecordBlockDefinition): E
     return firstOrNull { it.key == id } ?: firstOrNull()
 }
 
+/**
+ * Carries the global unit selection into input blocks. Values are canonical; this converts them to
+ * the user's selected display unit and back, and exposes the unit toggle as the single control point.
+ */
+internal data class UnitContext(
+    val program: UniversalProgramDefinition,
+    val ui: ProgramUiDefinition,
+    val preferences: Map<String, String>,
+    val onSelectUnit: (String, String) -> Unit
+) {
+    fun display(metric: MetricComponent, canonical: Double): DisplayMetricValue =
+        MetricUnitFormatter.displayValue(metric, canonical, program, ui, preferences)
+
+    fun configuredUnitModes(metricId: String): List<InputUnitMode> =
+        with(MetricUnitFormatter) { ui.inputConfigForMetric(metricId).unitModes }
+
+    fun selectedUnitId(metricId: String): String = preferences[metricId].orEmpty()
+
+    /** Steps the canonical value by [steps] display-steps and clamps to the metric's canonical range. */
+    fun step(metric: MetricComponent, canonical: Double, steps: Int): Double {
+        val current = display(metric, canonical)
+        return fromDisplay(metric, current.displayValue + steps * current.step)
+    }
+
+    fun fromDisplay(metric: MetricComponent, displayValue: Double): Double =
+        MetricUnitFormatter.fromDisplay(metric.id, displayValue, program, ui, preferences)
+            .coerceIn(metric.inputRange.first.toDouble(), metric.inputRange.last.toDouble())
+}
+
+internal fun Double.formatMetric(decimalPlaces: Int): String =
+    if (decimalPlaces <= 0) roundToInt().toString() else String.format(Locale.US, "%.${decimalPlaces}f", this)
+
+@Composable
+private fun UnitToggle(metricId: String, units: UnitContext) {
+    val modes = units.configuredUnitModes(metricId)
+    if (modes.size < 2) return
+    val selectedId = units.selectedUnitId(metricId)
+    Row(
+        Modifier.fillMaxWidth().padding(top = AppSpacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    ) {
+        modes.forEachIndexed { index, mode ->
+            val selected = mode.id == selectedId || (selectedId.isBlank() && index == 0)
+            FilterChip(
+                selected = selected,
+                onClick = { units.onSelectUnit(metricId, mode.id) },
+                label = { Text(mode.label) }
+            )
+        }
+    }
+}
+
 @Composable
 internal fun PairedVerticalWheelInputBlock(
     state: RecordInputState,
     components: List<MetricComponent>,
-    onChange: (String, Int) -> Unit
+    onChange: (String, Double) -> Unit,
+    units: UnitContext
 ) {
     val first = components.getOrNull(0) ?: return
     val second = components.getOrNull(1) ?: return
-    val firstValue = state.metricValue(first.id)
-    val secondValue = state.metricValue(second.id)
+    val firstValue = state.metricValue(first.id) ?: first.defaultValue?.toDouble()
+    val secondValue = state.metricValue(second.id) ?: second.defaultValue?.toDouble()
     val title = "${first.localizedLabel()} / ${second.localizedLabel()}"
     MeasurementSection(
         title,
         combinedMetricStatus(first.metricStatus(firstValue), second.metricStatus(secondValue))
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppSpacing.md)) {
-            MetricWheelPicker(
-                first, firstValue ?: first.defaultValue, first.inputRange,
-                { onChange(first.id, it) },
-                Modifier.weight(1f)
-            )
-            MetricWheelPicker(
-                second, secondValue ?: second.defaultValue, second.inputRange,
-                { onChange(second.id, it) },
-                Modifier.weight(1f)
-            )
+            MetricWheelPicker(first, firstValue, units, { onChange(first.id, it) }, Modifier.weight(1f))
+            MetricWheelPicker(second, secondValue, units, { onChange(second.id, it) }, Modifier.weight(1f))
         }
+        UnitToggle(first.id, units)
+        UnitToggle(second.id, units)
     }
 }
 
@@ -700,18 +776,15 @@ internal fun PairedVerticalWheelInputBlock(
 internal fun SingleHorizontalWheelInputBlock(
     state: RecordInputState,
     components: List<MetricComponent>,
-    onChange: (String, Int) -> Unit
+    onChange: (String, Double) -> Unit,
+    units: UnitContext
 ) {
     val metric = components.firstOrNull() ?: return
-    val metricValue = state.metricValue(metric.id)
+    val metricValue = state.metricValue(metric.id) ?: metric.defaultValue?.toDouble()
+        ?: metric.inputRange.first.toDouble()
     MeasurementSection(metric.localizedLabel(), metric.metricStatus(metricValue)) {
-        HorizontalMetricWheelPicker(
-            metric,
-            metricValue ?: metric.defaultValue ?: metric.inputRange.first,
-            metric.inputRange,
-            { onChange(metric.id, it) },
-            Modifier.fillMaxWidth()
-        )
+        HorizontalMetricWheelPicker(metric, metricValue, units, { onChange(metric.id, it) }, Modifier.fillMaxWidth())
+        UnitToggle(metric.id, units)
     }
 }
 
@@ -727,12 +800,14 @@ private fun List<MetricComponent>.forBlock(block: RecordBlockDefinition): List<M
 internal fun ScaleSliderInputBlock(
     state: RecordInputState,
     components: List<MetricComponent>,
-    onChange: (String, Int) -> Unit
+    onChange: (String, Double) -> Unit,
+    @Suppress("UNUSED_PARAMETER") units: UnitContext
 ) {
     val metric = components.firstOrNull() ?: return
     val range = metric.inputRange
-    val current = (state.metricValue(metric.id) ?: metric.defaultValue ?: range.first).coerceIn(range)
-    val status = metric.metricStatus(current)
+    val current = (state.metricValue(metric.id)?.roundToInt() ?: metric.defaultValue ?: range.first)
+        .coerceIn(range)
+    val status = metric.metricStatus(current.toDouble())
     val accent = status.accent()
     val steps = (range.last - range.first - 1).coerceAtLeast(0)
     MeasurementSection(metric.localizedLabel(), status) {
@@ -751,7 +826,7 @@ internal fun ScaleSliderInputBlock(
             )
             Slider(
                 value = current.toFloat(),
-                onValueChange = { onChange(metric.id, it.roundToInt().coerceIn(range)) },
+                onValueChange = { onChange(metric.id, it.roundToInt().coerceIn(range).toDouble()) },
                 valueRange = range.first.toFloat()..range.last.toFloat(),
                 steps = steps,
                 colors = SliderDefaults.colors(
@@ -771,9 +846,124 @@ internal fun ScaleSliderInputBlock(
     }
 }
 
+/**
+ * Config-driven complex input: a tracked source metric (e.g. weight) is entered via a wheel, a
+ * derived metric (e.g. BMI) is auto-calculated and shown read-only, and supporting sources (e.g.
+ * height) are shown with an edit affordance. Falls back to a plain wheel when the metric has no
+ * computed configuration, so simpler programs need no special handling.
+ */
+@Composable
+internal fun ComputedMetricInputBlock(
+    state: RecordInputState,
+    allMetrics: List<MetricComponent>,
+    computedMetricId: String,
+    onChange: (String, Double) -> Unit,
+    units: UnitContext
+) {
+    val computed = allMetrics.firstOrNull { it.id == computedMetricId } ?: return
+    val definition = computed.computedFrom
+    val sources = definition?.sourceMetricIds.orEmpty().mapNotNull { id -> allMetrics.firstOrNull { it.id == id } }
+    if (definition == null || sources.isEmpty()) {
+        // Graceful degradation: behave like a standard single-metric wheel.
+        SingleHorizontalWheelInputBlock(state, listOf(computed), onChange, units)
+        return
+    }
+    val trackedSource = sources.firstOrNull { it.isTracked }
+    val supportingSources = sources.filter { !it.isTracked }
+    val sourceValues = sources.associate { metric ->
+        metric.id to (state.metricValue(metric.id) ?: metric.defaultValue?.toDouble() ?: metric.inputRange.first.toDouble())
+    }
+    val computedValue = ComputedMetricCalculator.compute(definition, sourceValues)
+    val status = computed.metricStatus(computedValue)
+    MeasurementSection(computed.localizedLabel(), status) {
+        trackedSource?.let { source ->
+            HorizontalMetricWheelPicker(
+                source, state.metricValue(source.id), units, { onChange(source.id, it) }, Modifier.fillMaxWidth()
+            )
+            UnitToggle(source.id, units)
+        }
+        Spacer(Modifier.height(AppSpacing.sm))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                "${computed.localizedLabel()}: ",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                computedValue?.formatMetric(1) ?: "—",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = status.accent()
+            )
+            Text(
+                " ${computed.unit}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        supportingSources.forEach { source ->
+            SupportingMetricRow(source, state.metricValue(source.id), units) { onChange(source.id, it) }
+        }
+    }
+}
+
+@Composable
+private fun SupportingMetricRow(
+    metric: MetricComponent,
+    value: Double?,
+    units: UnitContext,
+    onChange: (Double) -> Unit
+) {
+    val canonical = value ?: metric.defaultValue?.toDouble() ?: metric.inputRange.first.toDouble()
+    val display = units.display(metric, canonical)
+    var showEditor by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(top = AppSpacing.sm),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "${metric.localizedLabel()}: ${display.valueText} ${display.unit}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(6.dp))
+        IconButton(onClick = { showEditor = true }, modifier = Modifier.size(28.dp)) {
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = metric.localizedLabel(),
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+    UnitToggle(metric.id, units)
+    if (showEditor) {
+        MetricValueEditor(
+            definition = metric,
+            canonical = canonical,
+            units = units,
+            onDismiss = { showEditor = false },
+            onConfirm = {
+                onChange(it)
+                showEditor = false
+            }
+        )
+    }
+}
+
 private enum class MetricStatus { Normal, Caution, Danger }
 
-private fun MetricComponent.metricStatus(value: Int?): MetricStatus = when {
+private fun MetricComponent.metricStatus(value: Double?): MetricStatus {
+    val intValue = value?.roundToInt()
+    return metricStatusInt(intValue)
+}
+
+private fun MetricComponent.metricStatusInt(value: Int?): MetricStatus = when {
     value == null || normalRange?.contains(value) == true -> MetricStatus.Normal
     cautionRange?.contains(value) == true -> MetricStatus.Caution
     else -> MetricStatus.Danger
@@ -810,13 +1000,18 @@ private fun MeasurementSection(
 @Composable
 private fun MetricWheelPicker(
     definition: MetricComponent,
-    value: Int?,
-    range: IntRange,
-    onChange: (Int) -> Unit,
+    value: Double?,
+    units: UnitContext,
+    onChange: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val current = (value ?: range.first).coerceIn(range)
-    val accent = definition.metricStatus(current).accent()
+    val lo = definition.inputRange.first.toDouble()
+    val hi = definition.inputRange.last.toDouble()
+    val canonical = (value ?: lo).coerceIn(lo, hi)
+    val display = units.display(definition, canonical)
+    val up = units.step(definition, canonical, 1)
+    val down = units.step(definition, canonical, -1)
+    val accent = definition.metricStatus(canonical).accent()
     var showEditor by remember { mutableStateOf(false) }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -826,15 +1021,15 @@ private fun MetricWheelPicker(
         )
         Spacer(Modifier.height(17.dp))
         Text(
-            (current + 1).coerceIn(range).toString(),
+            units.display(definition, up).valueText,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Normal,
-            modifier = Modifier.clickable { onChange((current + 1).coerceIn(range)) }
+            modifier = Modifier.clickable { onChange(up) }
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            current.toString(),
+            display.valueText,
             color = accent,
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.ExtraBold,
@@ -847,15 +1042,15 @@ private fun MetricWheelPicker(
         HorizontalDivider(Modifier.width(84.dp), color = accent.copy(alpha = 0.5f))
         Spacer(Modifier.height(4.dp))
         Text(
-            (current - 1).coerceIn(range).toString(),
+            units.display(definition, down).valueText,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Normal,
-            modifier = Modifier.clickable { onChange((current - 1).coerceIn(range)) }
+            modifier = Modifier.clickable { onChange(down) }
         )
         Spacer(Modifier.height(9.dp))
         Text(
-            definition.unit,
+            display.unit,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -863,8 +1058,8 @@ private fun MetricWheelPicker(
     if (showEditor) {
         MetricValueEditor(
             definition = definition,
-            value = current,
-            range = range,
+            canonical = canonical,
+            units = units,
             onDismiss = { showEditor = false },
             onConfirm = {
                 onChange(it)
@@ -877,13 +1072,16 @@ private fun MetricWheelPicker(
 @Composable
 private fun HorizontalMetricWheelPicker(
     definition: MetricComponent,
-    current: Int,
-    range: IntRange,
-    onChange: (Int) -> Unit,
+    value: Double?,
+    units: UnitContext,
+    onChange: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val value = current.coerceIn(range)
-    val accent = definition.metricStatus(value).accent()
+    val lo = definition.inputRange.first.toDouble()
+    val hi = definition.inputRange.last.toDouble()
+    val canonical = (value ?: lo).coerceIn(lo, hi)
+    val display = units.display(definition, canonical)
+    val accent = definition.metricStatus(canonical).accent()
     var showEditor by remember { mutableStateOf(false) }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -898,21 +1096,22 @@ private fun HorizontalMetricWheelPicker(
             verticalAlignment = Alignment.CenterVertically
         ) {
             (-2..2).forEach { offset ->
-                val item = (value + offset).coerceIn(range)
+                val itemCanonical = if (offset == 0) canonical else units.step(definition, canonical, offset)
+                val itemText = if (offset == 0) display.valueText else units.display(definition, itemCanonical).valueText
                 Text(
-                    item.toString(),
+                    itemText,
                     color = if (offset == 0) accent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
                     style = if (offset == 0) MaterialTheme.typography.displayMedium else MaterialTheme.typography.headlineSmall,
                     fontWeight = if (offset == 0) FontWeight.ExtraBold else FontWeight.Normal,
                     modifier = Modifier.clickable {
-                        if (offset == 0) showEditor = true else onChange(item)
+                        if (offset == 0) showEditor = true else onChange(itemCanonical)
                     }
                 )
             }
         }
         HorizontalDivider(Modifier.width(96.dp), color = accent.copy(alpha = 0.5f))
         Text(
-            definition.unit,
+            display.unit,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -920,8 +1119,8 @@ private fun HorizontalMetricWheelPicker(
     if (showEditor) {
         MetricValueEditor(
             definition = definition,
-            value = value,
-            range = range,
+            canonical = canonical,
+            units = units,
             onDismiss = { showEditor = false },
             onConfirm = {
                 onChange(it)
@@ -934,16 +1133,21 @@ private fun HorizontalMetricWheelPicker(
 @Composable
 private fun MetricValueEditor(
     definition: MetricComponent,
-    value: Int,
-    range: IntRange,
+    canonical: Double,
+    units: UnitContext,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Double) -> Unit
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    val display = units.display(definition, canonical)
+    val bound1 = MetricUnitFormatter.toDisplay(definition.id, definition.inputRange.first.toDouble(), units.program, units.ui, units.preferences)
+    val bound2 = MetricUnitFormatter.toDisplay(definition.id, definition.inputRange.last.toDouble(), units.program, units.ui, units.preferences)
+    val lo = minOf(bound1, bound2)
+    val hi = maxOf(bound1, bound2)
+    var text by remember(display.unitModeId, display.valueText) { mutableStateOf(display.valueText) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val parsed = text.toIntOrNull()
-    val valid = parsed != null && parsed in range
+    val parsed = text.replace(',', '.').toDoubleOrNull()
+    val valid = parsed != null && parsed >= lo && parsed <= hi
     LaunchedEffect(Unit) {
         delay(250)
         focusRequester.requestFocus()
@@ -956,12 +1160,14 @@ private fun MetricValueEditor(
         text = {
             OutlinedTextField(
                 value = text,
-                onValueChange = { input -> text = input.filter(Char::isDigit) },
+                onValueChange = { input -> text = input.filter { it.isDigit() || it == '.' || it == ',' } },
                 modifier = Modifier.focusRequester(focusRequester),
-                label = { Text(definition.unit) },
-                supportingText = { Text("${range.first}–${range.last} ${definition.unit}") },
+                label = { Text(display.unit) },
+                supportingText = { Text("${lo.formatMetric(display.decimalPlaces)}–${hi.formatMetric(display.decimalPlaces)} ${display.unit}") },
                 isError = text.isNotEmpty() && !valid,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = if (display.decimalPlaces > 0) KeyboardType.Decimal else KeyboardType.Number
+                ),
                 shape = MaterialTheme.shapes.small,
                 singleLine = true
             )
@@ -969,7 +1175,7 @@ private fun MetricValueEditor(
         confirmButton = {
             TextButton(
                 enabled = valid,
-                onClick = { parsed?.let(onConfirm) }
+                onClick = { parsed?.let { onConfirm(units.fromDisplay(definition, it)) } }
             ) {
                 Text(stringResource(R.string.ok))
             }

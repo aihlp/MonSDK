@@ -20,6 +20,7 @@ enum class WidgetType {
     NoteWidget,
     SaveButtonWidget,
     ScaleSliderInputWidget,
+    ComputedMetricInputWidget,
     AnalyticsSummaryWidget,
     AnalyticsDetailsWidget,
     HistoryWidget
@@ -108,7 +109,14 @@ data class MetricComponent(
     val labelKey: String? = null,
     val unitKey: String? = null,
     /** When set, this metric is derived from other metrics instead of entered directly. */
-    val computedFrom: ComputedMetricDefinition? = null
+    val computedFrom: ComputedMetricDefinition? = null,
+    /**
+     * Whether this metric is an actively tracked main value (shown in history main values, graph and
+     * analytics). Supporting inputs like height are kept in the model but not tracked (false).
+     */
+    val isTracked: Boolean = true,
+    /** Whether this metric is rendered as a standard value in the main record/history UI. */
+    val isVisible: Boolean = true
 )
 
 enum class ComputedMetricFormula {
@@ -295,8 +303,10 @@ data class SaveActionDefinition(
 data class RecordBlockDefinition(
     val type: WidgetType,
     val configId: String = type.name,
-    /** Optional entry precision / unit switching for metric input blocks. */
-    val inputConfig: InputBlockConfig? = null
+    /** Optional entry precision / unit switching for a single-metric input block. */
+    val inputConfig: InputBlockConfig? = null,
+    /** Per-metric entry configs for multi-metric blocks (e.g. weight + height in a BMI block). */
+    val inputConfigs: Map<String, InputBlockConfig> = emptyMap()
 )
 
 data class AnalyticsRuleDefinition(

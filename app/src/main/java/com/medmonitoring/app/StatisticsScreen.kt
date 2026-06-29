@@ -32,6 +32,7 @@ import com.medmonitoring.core.ui.theme.toColor
 internal fun StatisticsScreen(viewModel: MedViewModel) {
     val records by viewModel.records.collectAsState()
     val analytics by viewModel.analytics.collectAsState()
+    val unitPreferences by viewModel.unitPreferences.state.collectAsState()
     val blocks = viewModel.uiDefinition.statisticsScreenBlocks
     Column(
         Modifier
@@ -59,7 +60,9 @@ internal fun StatisticsScreen(viewModel: MedViewModel) {
                 viewModel.program,
                 viewModel.uiDefinition,
                 viewModel::upsertRecord,
-                viewModel::deleteRecord
+                viewModel::deleteRecord,
+                unitPreferences = unitPreferences,
+                onSelectUnit = viewModel::selectUnit
             )
         }
     }

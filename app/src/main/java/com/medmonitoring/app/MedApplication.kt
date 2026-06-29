@@ -3,6 +3,7 @@ package com.medmonitoring.app
 import android.app.Application
 import com.medmonitoring.core.ai.AiAnalysisWorker
 import com.medmonitoring.core.program.ActiveProgramModuleProvider
+import com.medmonitoring.app.di.ProgramCatalog
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp

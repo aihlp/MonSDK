@@ -31,6 +31,7 @@ import com.medmonitoring.app.ui.localizedResource
 import com.medmonitoring.app.ui.localizedTag
 import com.medmonitoring.app.ui.localizedTitle
 import com.medmonitoring.core.domain.model.*
+import kotlin.math.roundToInt
 import com.medmonitoring.core.ui.theme.LocalProgramVisuals
 import com.medmonitoring.core.ui.theme.toColor
 import java.time.Instant
@@ -45,7 +46,9 @@ internal fun HistoryCards(
     program: UniversalProgramDefinition,
     uiDefinition: ProgramUiDefinition,
     onSave: (UserRecord) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    unitPreferences: Map<String, String> = emptyMap(),
+    onSelectUnit: (String, String) -> Unit = { _, _ -> }
 ) {
     val visuals = LocalProgramVisuals.current
     val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.systemDefault())
@@ -55,7 +58,7 @@ internal fun HistoryCards(
         records.forEach { record ->
             var expanded by remember { mutableStateOf(false) }
             var tagsExpanded by remember(record.id) { mutableStateOf(false) }
-            val historyStatus = historyMetricStatus(record, program.metricComponents)
+            val historyStatus = historyMetricStatus(record, program.metricComponents.filter { it.isTracked })
             val displayTagGroups = record.displayTagGroups(program.tagGroups)
             val visibleTagGroups = if (tagsExpanded) displayTagGroups
             else displayTagGroups.take(visuals.components.healthCard.maxVisibleTagRows)
@@ -80,8 +83,11 @@ internal fun HistoryCards(
                             Modifier.weight(1f),
                             horizontalArrangement = Arrangement.spacedBy(28.dp)
                         ) {
-                            program.metricComponents.forEach { metric ->
+                            program.metricComponents.filter { it.isVisible }.forEach { metric ->
                                 record.metricValue(metric.id)?.let { value ->
+                                    val rendered = MetricUnitFormatter.displayValue(
+                                        metric, value, program, uiDefinition, unitPreferences
+                                    )
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             metric.localizedLabel().uppercase(),
@@ -92,7 +98,7 @@ internal fun HistoryCards(
                                             textAlign = TextAlign.Center
                                         )
                                         Text(
-                                            value.toString(),
+                                            rendered.valueText,
                                             style = MaterialTheme.typography.headlineLarge.copy(
                                                 fontSize = 34.sp,
                                                 lineHeight = 34.sp,
@@ -103,7 +109,7 @@ internal fun HistoryCards(
                                             textAlign = TextAlign.Center
                                         )
                                         Text(
-                                            metric.unit,
+                                            rendered.unit,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Normal,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -223,7 +229,9 @@ internal fun HistoryCards(
             onSave = {
                 onSave(it)
                 editingRecord = null
-            }
+            },
+            unitPreferences = unitPreferences,
+            onSelectUnit = onSelectUnit
         )
     }
 }
@@ -240,7 +248,9 @@ private fun EditRecordSheet(
     program: UniversalProgramDefinition,
     uiDefinition: ProgramUiDefinition,
     onDismiss: () -> Unit,
-    onSave: (UserRecord) -> Unit
+    onSave: (UserRecord) -> Unit,
+    unitPreferences: Map<String, String> = emptyMap(),
+    onSelectUnit: (String, String) -> Unit = { _, _ -> }
 ) {
     var draft by remember(initial.id) { mutableStateOf(initial.toInputState()) }
     val selected = remember(initial.id) {
@@ -310,6 +320,8 @@ private fun EditRecordSheet(
                     }
                 },
                 onNoteChange = { draft = draft.copy(note = it) },
+                unitPreferences = unitPreferences,
+                onSelectUnit = onSelectUnit,
                 includeGraph = false,
                 bottomSpacer = 0.dp,
                 fillAvailable = false,
@@ -380,7 +392,7 @@ private fun UserRecord.toInputState() = RecordInputState(
             if (!event.unit.isNullOrBlank()) append(" ${event.unit}")
         }.trim()
     },
-    metricValues = measurements.associate { it.key to it.value.toInt() },
+    metricValues = measurements.associate { it.key to it.value },
     note = note.orEmpty()
 )
 
@@ -504,8 +516,8 @@ private fun UserRecord.displayTagGroups(groups: List<TagGroupDefinition>): List<
     return (manual + automatic).filter { it.tags.isNotEmpty() }
 }
 
-private fun UserRecord.metricValue(metricId: String): Int? =
-    measurements.firstOrNull { it.key == metricId }?.value?.toInt()
+private fun UserRecord.metricValue(metricId: String): Double? =
+    measurements.firstOrNull { it.key == metricId }?.value
 
 private enum class HistoryMetricStatus { Normal, Caution, Danger }
 
@@ -523,10 +535,13 @@ private fun historyMetricStatus(
     }
 }
 
-private fun metricStatus(metric: MetricComponent, value: Int): HistoryMetricStatus = when {
-    metric.normalRange?.contains(value) == true -> HistoryMetricStatus.Normal
-    metric.cautionRange?.contains(value) == true -> HistoryMetricStatus.Caution
-    else -> HistoryMetricStatus.Danger
+private fun metricStatus(metric: MetricComponent, value: Double): HistoryMetricStatus {
+    val rounded = value.roundToInt()
+    return when {
+        metric.normalRange?.contains(rounded) == true -> HistoryMetricStatus.Normal
+        metric.cautionRange?.contains(rounded) == true -> HistoryMetricStatus.Caution
+        else -> HistoryMetricStatus.Danger
+    }
 }
 
 @Composable

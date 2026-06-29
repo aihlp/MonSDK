@@ -31,6 +31,10 @@ import com.medmonitoring.core.domain.model.GraphSeriesType
 import com.medmonitoring.core.domain.model.UserRecord
 import com.medmonitoring.core.domain.model.GraphDefinition
 import com.medmonitoring.core.domain.model.AxisScaleStrategy
+import com.medmonitoring.core.domain.model.MetricUnitFormatter
+import com.medmonitoring.core.domain.model.ProgramUiDefinition
+import com.medmonitoring.core.domain.model.UniversalProgramDefinition
+import kotlin.math.roundToInt
 import com.medmonitoring.app.R
 import com.medmonitoring.app.ui.localizedActionLabel
 import com.medmonitoring.app.ui.localizedImageContentDescription
@@ -83,6 +87,69 @@ private val ChipGap = 8.dp
 
 @Composable
 fun GraphWidget(
+    records: List<UserRecord>?,
+    definition: GraphDefinition,
+    modifier: Modifier = Modifier,
+    showEmptyState: Boolean = true,
+    onSetReminder: () -> Unit = {},
+    program: UniversalProgramDefinition? = null,
+    ui: ProgramUiDefinition? = null,
+    unitPreferences: Map<String, String> = emptyMap()
+) {
+    // Re-express plotted metrics (values + safe zones + overlay) in the user's selected units so the
+    // chart rescales when units change. Identity transform for metrics without alternate units.
+    val displayDefinition = if (program != null && ui != null) {
+        definition.inDisplayUnits(program, ui, unitPreferences)
+    } else {
+        definition
+    }
+    val displayRecords = if (program != null && ui != null && records != null) {
+        records.toDisplayUnits(definition.metrics.toSet(), program, ui, unitPreferences)
+    } else {
+        records
+    }
+    GraphWidgetContent(displayRecords, displayDefinition, modifier, showEmptyState, onSetReminder)
+}
+
+private fun List<UserRecord>.toDisplayUnits(
+    metricIds: Set<String>,
+    program: UniversalProgramDefinition,
+    ui: ProgramUiDefinition,
+    prefs: Map<String, String>
+): List<UserRecord> = map { record ->
+    record.copy(
+        measurements = record.measurements.map { measurement ->
+            if (measurement.key !in metricIds) return@map measurement
+            val display = MetricUnitFormatter.displayValue(
+                program.metricComponents.firstOrNull { it.id == measurement.key }
+                    ?: return@map measurement,
+                measurement.value, program, ui, prefs
+            )
+            measurement.copy(value = display.displayValue, unit = display.unit)
+        }
+    )
+}
+
+private fun GraphDefinition.inDisplayUnits(
+    program: UniversalProgramDefinition,
+    ui: ProgramUiDefinition,
+    prefs: Map<String, String>
+): GraphDefinition {
+    fun convert(metricId: String, bound: Int): Int =
+        MetricUnitFormatter.toDisplay(metricId, bound.toDouble(), program, ui, prefs).roundToInt()
+    return copy(
+        safeZones = safeZones.map { zone ->
+            zone.copy(range = convert(zone.metricId, zone.range.first)..convert(zone.metricId, zone.range.last))
+        },
+        pointOverlay = pointOverlay.copy(
+            normalRange = convert(pointOverlay.metricId, pointOverlay.normalRange.first)..
+                convert(pointOverlay.metricId, pointOverlay.normalRange.last)
+        )
+    )
+}
+
+@Composable
+private fun GraphWidgetContent(
     records: List<UserRecord>?,
     definition: GraphDefinition,
     modifier: Modifier = Modifier,

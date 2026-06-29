@@ -112,11 +112,15 @@ object DiabetesDefinitions {
                 label = "Height",
                 unit = "cm",
                 inputRange = 100..230,
-                inputStyle = MetricInputStyle.HorizontalWheel,
+                inputStyle = MetricInputStyle.NumericField,
                 palette = glucosePalette,
                 defaultValue = 170,
                 isRequired = false,
-                labelKey = "metric_height"
+                labelKey = "metric_height",
+                // Supporting input: used to compute BMI, kept in the model but not tracked or shown
+                // as a main value. It still appears (editable) inside the BMI input block.
+                isTracked = false,
+                isVisible = false
             ),
             MetricComponent(
                 id = "bmi",
@@ -280,6 +284,7 @@ object DiabetesDefinitions {
             WidgetType.DateTimeWidget,
             WidgetType.EventStatusWidget,
             WidgetType.SingleHorizontalWheelInputWidget,
+            WidgetType.ComputedMetricInputWidget,
             WidgetType.TagGroupsWidget,
             WidgetType.NoteWidget,
             WidgetType.SaveButtonWidget
@@ -344,7 +349,7 @@ object DiabetesDefinitions {
                 instructionKeys = listOf("metric_glucose", "group_meal_context")
             )
         ),
-        saveActionDefinition = SaveActionDefinition("{glucose} mmol/L · {weight} kg", "Save glucose reading"),
+        saveActionDefinition = SaveActionDefinition("{glucose} {unit:glucose} · {weight} {unit:weight}", "Save glucose reading"),
         editAffordance = EditAffordanceDefinition(EditAffordanceIcon.MaterialEdit, "#64748B", 16),
         visualConfig = visualConfig,
         autoCollection = AutoCollectionConfig(
@@ -367,6 +372,27 @@ object DiabetesDefinitions {
                     recordType = HealthConnectRecordType.WEIGHT,
                     metricMappings = mapOf("weight" to "weight"),
                     role = HealthConnectMappingRole.PRIMARY_METRIC
+                ),
+                // Cross-context: blood pressure is read for sugar patients as a CONTEXT signal only.
+                // The existing tag matrix transforms high readings into a "High BP" context tag.
+                HealthConnectMapping(
+                    recordType = HealthConnectRecordType.BLOOD_PRESSURE,
+                    metricMappings = emptyMap(),
+                    role = HealthConnectMappingRole.CONTEXT_TAG,
+                    rules = listOf(
+                        SensorRule(
+                            sensorId = "hc.blood_pressure.systolic",
+                            transformType = TransformType.TAG,
+                            threshold = 140.0,
+                            targetTag = "High BP"
+                        ),
+                        SensorRule(
+                            sensorId = "hc.blood_pressure.diastolic",
+                            transformType = TransformType.TAG,
+                            threshold = 90.0,
+                            targetTag = "High BP"
+                        )
+                    )
                 ),
                 HealthConnectMapping(
                     recordType = HealthConnectRecordType.STEPS,
@@ -467,30 +493,27 @@ object DiabetesDefinitions {
                     )
                 )
             ),
+            // Complex body-composition block: weight wheel (tracked) auto-calculates BMI (tracked,
+            // read-only) and shows height as an editable supporting field. Units are per-metric.
             RecordBlockDefinition(
-                type = WidgetType.SingleHorizontalWheelInputWidget,
-                configId = "weight",
-                inputConfig = InputBlockConfig(
-                    step = 1.0,
-                    decimalPlaces = 0,
-                    unitModes = listOf(
-                        InputUnitMode(
-                            id = "kg",
-                            label = "kg",
-                            unit = "kg",
-                            toCanonicalFactor = 1.0
-                        ),
-                        InputUnitMode(
-                            id = "lb",
-                            label = "lb",
-                            unit = "lb",
-                            toCanonicalFactor = 0.45359237
-                        ),
-                        InputUnitMode(
-                            id = "st",
-                            label = "st",
-                            unit = "st",
-                            toCanonicalFactor = 6.35029318
+                type = WidgetType.ComputedMetricInputWidget,
+                configId = "bmi",
+                inputConfigs = mapOf(
+                    "weight" to InputBlockConfig(
+                        step = 1.0,
+                        decimalPlaces = 0,
+                        unitModes = listOf(
+                            InputUnitMode(id = "kg", label = "kg", unit = "kg", toCanonicalFactor = 1.0),
+                            InputUnitMode(id = "lb", label = "lb", unit = "lb", toCanonicalFactor = 0.45359237),
+                            InputUnitMode(id = "st", label = "st", unit = "st", toCanonicalFactor = 6.35029318)
+                        )
+                    ),
+                    "height" to InputBlockConfig(
+                        step = 1.0,
+                        decimalPlaces = 0,
+                        unitModes = listOf(
+                            InputUnitMode(id = "cm", label = "cm", unit = "cm", toCanonicalFactor = 1.0),
+                            InputUnitMode(id = "in", label = "in", unit = "in", toCanonicalFactor = 2.54)
                         )
                     )
                 )

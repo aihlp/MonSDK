@@ -61,10 +61,13 @@ object MetricUnitFormatter {
     fun fromDisplay(metricId: String, displayValue: Double, program: UniversalProgramDefinition, ui: ProgramUiDefinition, unitPreferences: Map<String, String>): Double =
         displayValue.toCanonical(activeUnit(metricId, program, ui, unitPreferences))
 
-    fun ProgramUiDefinition.inputConfigForMetric(metricId: String): InputBlockConfig =
-        recordBlocks.firstOrNull { block ->
+    fun ProgramUiDefinition.inputConfigForMetric(metricId: String): InputBlockConfig {
+        // Per-metric config on a multi-metric block wins (e.g. height inside a BMI block).
+        recordBlocks.firstNotNullOfOrNull { it.inputConfigs[metricId] }?.let { return it }
+        return recordBlocks.firstOrNull { block ->
             block.configId.split(',').map { it.trim() }.any { it == metricId }
         }?.inputConfig ?: InputBlockConfig()
+    }
 
     fun ProgramUiDefinition.displayInputConfigForMetric(
         metricId: String,
